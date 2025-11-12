@@ -43,3 +43,10 @@
     name: "{{ ansible_user }}"
     groups: docker
     append: yes
+
+- name: Add deployment user to docker group
+  user:
+    name: "{{ deployment_user }}"
+    groups: docker
+    append: yes
+  when: deployment_user is defined

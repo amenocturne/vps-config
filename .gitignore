@@ -82,3 +82,12 @@ wheels/
 
 # uv
 .venv/
+
+# Secrets - comprehensive patterns
+ansible/inventories/.secrets.yml
+ansible/inventories/**/.secrets.yml
+**/*secrets*.yml
+**/secrets/
+.secrets/
+ansible/**/node_compose.yml
+**/node_compose.yml

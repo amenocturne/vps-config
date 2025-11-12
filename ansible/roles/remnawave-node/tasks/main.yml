@@ -1,0 +1,129 @@
+---
+# Remnawave VPN Node Deployment Tasks
+
+- name: Check if SECRET_KEY is provided
+  assert:
+    that:
+      - remnawave_node_secret_key is defined
+      - remnawave_node_secret_key | length > 0
+    fail_msg: |
+      SECRET_KEY is required for Remnawave Node.
+
+      IMPORTANT: You must obtain the SECRET_KEY from your Remnawave Panel first!
+
+      Steps to get the secret key:
+      1. Login to your Remnawave Panel at {{ remnawave_frontend_domain }}
+      2. Navigate to Nodes section
+      3. Click "Create Node" or edit an existing node
+      4. Copy the SECRET_KEY value
+      5. Add it to your inventory secrets file:
+         remnawave_node_secret_key: "YOUR_SECRET_KEY_HERE"
+
+- name: Create node log directory
+  file:
+    path: "{{ remnawave_node_log_directory }}"
+    state: directory
+    mode: '0755'
+
+- name: Create remnawave node directory
+  file:
+    path: "{{ remnawave_node_directory }}"
+    state: directory
+    mode: '0755'
+
+- name: Deploy node docker-compose.yml
+  template:
+    src: docker-compose-node.yml.j2
+    dest: "{{ remnawave_node_directory }}/docker-compose.yml"
+    mode: '0644'
+  register: node_compose
+
+- name: Stop existing node containers if config changed
+  community.docker.docker_compose_v2:
+    project_src: "{{ remnawave_node_directory }}"
+    state: absent
+  when: node_compose.changed
+  ignore_errors: yes
+
+- name: Start Remnawave Node with Docker Compose
+  community.docker.docker_compose_v2:
+    project_src: "{{ remnawave_node_directory }}"
+    state: present
+
+- name: Configure firewall - Allow VPN node communication port
+  ufw:
+    rule: allow
+    port: "{{ remnawave_node_app_port }}"
+    proto: tcp
+  when: ansible_os_family == "Debian"
+
+- name: Configure firewall - Allow VLESS protocol (port 443)
+  ufw:
+    rule: allow
+    port: "{{ remnawave_node_vless_port }}"
+    proto: tcp
+  when: ansible_os_family == "Debian"
+
+- name: Configure firewall - Allow Shadowsocks protocol (optional)
+  ufw:
+    rule: allow
+    port: "{{ remnawave_node_shadowsocks_port }}"
+    proto: tcp
+  when:
+    - ansible_os_family == "Debian"
+    - remnawave_node_enable_shadowsocks | default(false)
+
+- name: Configure firewall - Allow Reality destination port
+  ufw:
+    rule: allow
+    port: "{{ remnawave_node_reality_port }}"
+    proto: tcp
+  when: ansible_os_family == "Debian"
+
+- name: Install logrotate if not present
+  apt:
+    name: logrotate
+    state: present
+    update_cache: yes
+  when: ansible_os_family == "Debian"
+
+- name: Deploy logrotate configuration for node
+  template:
+    src: logrotate-node.j2
+    dest: /etc/logrotate.d/remnanode
+    mode: '0644'
+
+- name: Display node status
+  debug:
+    msg: |
+      ================================================================================
+      Remnawave Node Deployment Status
+      ================================================================================
+
+      Node Directory: {{ remnawave_node_directory }}
+      Log Directory: {{ remnawave_node_log_directory }}
+
+      Node Communication Port: {{ remnawave_node_app_port }}
+      VLESS Port: {{ remnawave_node_vless_port }}
+      Shadowsocks Port: {{ remnawave_node_shadowsocks_port }}
+      Reality Port: {{ remnawave_node_reality_port }}
+
+      ================================================================================
+      NEXT STEPS:
+      ================================================================================
+
+      1. Verify the node is running:
+         docker ps | grep remnanode
+
+      2. Check node logs:
+         docker logs remnanode -f
+
+      3. Verify the node appears online in your Remnawave Panel at:
+         {{ remnawave_frontend_domain }}
+
+      4. Configure your VPN inbounds in the Remnawave Panel:
+         - Create inbound configurations (VLESS, Shadowsocks, etc.)
+         - Assign inbounds to this node
+         - Test VPN connection from a client
+
+      ================================================================================

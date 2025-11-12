@@ -1,0 +1,13 @@
+---
+- name: Configure Remnawave VPN Server
+  hosts: remnawave
+  become: yes
+  vars_files:
+    - "{{ inventory_dir }}/.secrets.yml"
+  roles:
+    - { role: common, tags: ['common'] }
+    - { role: security, tags: ['security'] }
+    - { role: docker, tags: ['docker'] }
+    - { role: remnawave, tags: ['remnawave', 'panel'] }
+    - { role: remnawave-subscription-page, tags: ['remnawave-subscription', 'subscription'] }
+    - { role: remnawave-node, tags: ['remnawave-node', 'node', 'vpn'] }

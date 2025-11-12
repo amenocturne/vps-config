@@ -50,6 +50,14 @@ access_control:
       policy: one_factor
     - domain: "loki.{{ domain_name }}"
       policy: one_factor
+    # Remnawave: bypass API endpoints to allow Remnawave's own auth
+    - domain: "panel.{{ domain_name }}"
+      policy: bypass
+      resources:
+        - "^/api/.*$"
+    # Remnawave: protect main UI with Authelia
+    - domain: "panel.{{ domain_name }}"
+      policy: one_factor
 
 session:
   name: authelia_session

@@ -18,6 +18,11 @@ all:
     portainer_port: 9000
     personal_website_port: 8002
 
+    # Remnawave configuration
+    remnawave_server_ip: "64.111.92.2"
+    remnawave_app_port: 3000
+    remnawave_caddy_port: 8080
+
     # System configuration
     system_timezone: "UTC"
     apt_cache_valid_time: 3600

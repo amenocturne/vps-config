@@ -1,0 +1,45 @@
+---
+# Remnawave Subscription Page Deployment Tasks
+
+- name: Create subscription page directory
+  file:
+    path: /opt/remnawave-subscription
+    state: directory
+    mode: '0755'
+
+- name: Deploy subscription page docker-compose.yml
+  template:
+    src: docker-compose-subscription.yml.j2
+    dest: /opt/remnawave-subscription/docker-compose.yml
+    mode: '0644'
+  register: subscription_compose
+
+- name: Stop existing subscription page if config changed
+  community.docker.docker_compose_v2:
+    project_src: /opt/remnawave-subscription
+    state: absent
+  when: subscription_compose.changed
+  ignore_errors: yes
+
+- name: Start Subscription Page with Docker Compose
+  community.docker.docker_compose_v2:
+    project_src: /opt/remnawave-subscription
+    state: present
+
+- name: Display subscription page info
+  debug:
+    msg: |
+      ================================================================================
+      Remnawave Subscription Page Deployed
+      ================================================================================
+
+      Container: remnawave-subscription-page
+      Port: {{ subscription_page_port }}
+      Panel URL: https://{{ remnawave_frontend_domain }}
+
+      The subscription page is running on port {{ subscription_page_port }}.
+
+      Next step: Configure Caddy on the main server to proxy to this service
+      at domain: {{ subscription_page_domain }}
+
+      ================================================================================

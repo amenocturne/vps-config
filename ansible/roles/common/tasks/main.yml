@@ -28,8 +28,6 @@
     name: "{{ deployment_user }}"
     shell: /bin/bash
     create_home: yes
-    groups: docker
-    append: yes
 
 - name: Setup SSH directory for deployment user
   file:

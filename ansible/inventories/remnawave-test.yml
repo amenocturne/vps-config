@@ -1,0 +1,80 @@
+all:
+  hosts:
+    remnawave:
+      ansible_host: 64.111.92.2
+      ansible_user: root
+      ansible_ssh_private_key_file: ~/.ssh/bitlaunch
+      ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+      ansible_python_interpreter: /usr/bin/python3.12
+
+  vars:
+    # Remnawave configuration
+    remnawave_app_port: 3000
+    remnawave_metrics_port: 3001
+    remnawave_db_port: 6767
+    remnawave_caddy_port: 8080
+    remnawave_directory: "/opt/remnawave"
+    remnawave_user: "remnawave"
+
+    # Main server IP (allowed to access panel)
+    main_server_ip: "168.100.11.130"
+
+    # Domain configuration (main server domain)
+    domain_name: "amenocturne.space"
+    remnawave_panel_subdomain: "panel.amenocturne.space"
+
+    # Remnawave public endpoints
+    remnawave_frontend_domain: "panel.amenocturne.space"
+    remnawave_sub_domain: "sub.amenocturne.space"
+
+    # System configuration
+    system_timezone: "UTC"
+    apt_cache_valid_time: 3600
+
+    # Directory structure
+    base_directory: "/opt"
+    logs_directory: "/opt/logs"
+
+    # Network configuration
+    http_port: 80
+    https_port: 443
+
+    # SSH configuration
+    ssh_port: 22
+    ssh_permit_root_login: "yes"
+    ssh_password_authentication: "no"
+    ssh_pubkey_authentication: "yes"
+
+    # Security configuration
+    fail2ban_enabled: true
+    unattended_upgrades_enabled: true
+    automatic_reboot: false
+
+    # Essential packages
+    essential_packages:
+      - curl
+      - wget
+      - git
+      - htop
+      - unzip
+      - software-properties-common
+      - apt-transport-https
+      - ca-certificates
+      - gnupg
+      - lsb-release
+
+    # Docker packages
+    docker_packages:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-compose-plugin
+
+    # Security packages
+    security_packages:
+      - fail2ban
+      - unattended-upgrades
+
+    # Deployment user configuration
+    deployment_user: "deployer"
+    deployment_user_ssh_key: ""  # Optional: Add SSH key if needed

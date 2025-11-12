@@ -1,0 +1,33 @@
+# Caddy configuration for Remnawave VPN server
+# This Caddy instance accepts HTTP from main server's reverse proxy
+
+# Accept HTTP requests (TLS handled by main server)
+:80 {
+    # Route based on Host header
+    @panel host panel.{{ domain_name }}
+    @subscription host sub.{{ domain_name }}
+
+    # Remnawave Panel
+    handle @panel {
+        reverse_proxy http://remnawave:{{ remnawave_app_port }} {
+            # Set required headers for ProxyCheckMiddleware
+            header_up X-Forwarded-Proto https
+            header_up X-Forwarded-For {http.request.header.X-Forwarded-For}
+            header_up X-Forwarded-Host {http.request.header.X-Forwarded-Host}
+        }
+    }
+
+    # Remnawave Subscription Page
+    handle @subscription {
+        reverse_proxy http://remnawave-subscription-page:{{ subscription_page_port }} {
+            header_up X-Forwarded-Proto https
+            header_up X-Forwarded-For {http.request.header.X-Forwarded-For}
+            header_up X-Forwarded-Host {http.request.header.X-Forwarded-Host}
+        }
+    }
+
+    # Fallback (shouldn't happen, but just in case)
+    handle {
+        respond "Not Found" 404
+    }
+}

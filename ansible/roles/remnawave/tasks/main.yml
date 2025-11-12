@@ -1,0 +1,176 @@
+---
+- name: Create remnawave system user
+  user:
+    name: "{{ remnawave_user }}"
+    system: yes
+    create_home: yes
+    shell: /bin/bash
+    state: present
+
+- name: Add remnawave user to docker group
+  user:
+    name: "{{ remnawave_user }}"
+    groups: docker
+    append: yes
+
+- name: Create remnawave directory
+  file:
+    path: "{{ remnawave_directory }}"
+    state: directory
+    owner: "{{ remnawave_user }}"
+    group: "{{ remnawave_user }}"
+    mode: '0755'
+
+- name: Download docker-compose-prod.yml
+  get_url:
+    url: https://raw.githubusercontent.com/remnawave/backend/refs/heads/main/docker-compose-prod.yml
+    dest: "{{ remnawave_directory }}/docker-compose.yml"
+    owner: "{{ remnawave_user }}"
+    group: "{{ remnawave_user }}"
+    mode: '0644'
+
+- name: Modify docker-compose to bind to all interfaces (for remote reverse proxy)
+  replace:
+    path: "{{ remnawave_directory }}/docker-compose.yml"
+    regexp: "127\\.0\\.0\\.1:3000:3000"
+    replace: "0.0.0.0:3000:3000"
+
+- name: Check if secrets file exists
+  stat:
+    path: "{{ inventory_dir }}/.secrets.yml"
+  register: secrets_file
+  delegate_to: localhost
+  become: false
+
+- name: Load persistent secrets from inventory
+  include_vars:
+    file: "{{ inventory_dir }}/.secrets.yml"
+  when: secrets_file.stat.exists
+
+- name: Deploy .env configuration file
+  template:
+    src: env.j2
+    dest: "{{ remnawave_directory }}/.env"
+    owner: "{{ remnawave_user }}"
+    group: "{{ remnawave_user }}"
+    mode: '0600'
+  register: env_file
+
+- name: Stop existing Remnawave containers if .env changed
+  community.docker.docker_compose_v2:
+    project_src: "{{ remnawave_directory }}"
+    state: absent
+  become_user: "{{ remnawave_user }}"
+  when: env_file.changed
+  ignore_errors: true
+
+- name: Start Remnawave with Docker Compose
+  community.docker.docker_compose_v2:
+    project_src: "{{ remnawave_directory }}"
+    state: present
+  become_user: "{{ remnawave_user }}"
+
+- name: Configure firewall - Allow panel access from main server
+  ufw:
+    rule: allow
+    port: "{{ remnawave_app_port }}"
+    from_ip: "{{ main_server_ip }}"
+    proto: tcp
+  when: ansible_os_family == "Debian"
+
+- name: Configure firewall - Allow panel access from localhost
+  ufw:
+    rule: allow
+    port: "{{ remnawave_app_port }}"
+    from_ip: 127.0.0.1
+    proto: tcp
+  when: ansible_os_family == "Debian"
+
+- name: Configure firewall - Deny all other access to panel port
+  ufw:
+    rule: deny
+    port: "{{ remnawave_app_port }}"
+    proto: tcp
+  when: ansible_os_family == "Debian"
+
+- name: Configure firewall - Block external access to metrics port
+  ufw:
+    rule: deny
+    port: "{{ remnawave_metrics_port }}"
+    from_ip: any
+  when: ansible_os_family == "Debian"
+
+- name: Configure firewall - Block external access to database port
+  ufw:
+    rule: deny
+    port: "{{ remnawave_db_port }}"
+    from_ip: any
+  when: ansible_os_family == "Debian"
+
+# Caddy setup for local proxying
+- name: Create caddy directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - /opt/caddy
+    - /opt/caddy/config
+    - /opt/caddy/data
+
+- name: Generate Caddyfile for Remnawave
+  template:
+    src: ../../caddy/templates/Caddyfile-remnawave.j2
+    dest: /opt/caddy/Caddyfile
+    mode: '0644'
+  register: caddyfile
+
+- name: Start Caddy container
+  community.docker.docker_container:
+    name: caddy
+    image: caddy:latest
+    state: started
+    restart_policy: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - /opt/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - /opt/caddy/data:/data
+      - /opt/caddy/config:/config
+    networks:
+      - name: remnawave-network
+
+- name: Restart Caddy if config changed
+  community.docker.docker_container:
+    name: caddy
+    state: started
+    restart: yes
+  when: caddyfile.changed
+
+- name: Configure firewall - Allow HTTP traffic
+  ufw:
+    rule: allow
+    port: "80"
+    proto: tcp
+  when: ansible_os_family == "Debian"
+
+- name: Configure firewall - Allow HTTPS traffic
+  ufw:
+    rule: allow
+    port: "443"
+    proto: tcp
+  when: ansible_os_family == "Debian"
+
+- name: Configure firewall - Allow HTTP/3 (QUIC)
+  ufw:
+    rule: allow
+    port: "443"
+    proto: udp
+  when: ansible_os_family == "Debian"
+
+
+# Create default inbound configuration
+- name: Create default inbound configuration
+  include_tasks: create_inbound.yml
+  when: remnawave_create_default_inbound | default(false)
+  tags: ['inbound', 'always']

@@ -1,0 +1,6 @@
+---
+# Remnawave Subscription Page default configuration
+subscription_page_port: 3010
+subscription_page_domain: "sub.amenocturne.space"
+subscription_page_meta_title: "VPN Subscription"
+subscription_page_meta_description: "Add VPN configuration to your device"

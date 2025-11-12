@@ -1,0 +1,15 @@
+---
+# Remnawave Node default configuration
+remnawave_node_directory: "/opt/remnanode"
+remnawave_node_app_port: 2222
+remnawave_node_log_directory: "/var/lib/remnanode"
+
+# VPN Protocol ports
+remnawave_node_vless_port: 443
+remnawave_node_shadowsocks_port: 1234
+remnawave_node_reality_port: 9443
+
+# SECRET_KEY (must be obtained from Remnawave Panel)
+# This MUST be set in inventory secrets file (ansible/inventories/.secrets.yml)
+# NEVER commit actual secret keys to git!
+remnawave_node_secret_key: ""

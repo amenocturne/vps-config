@@ -14,7 +14,7 @@ grafana.{{ domain_name }} {
 :3001 {
 {% endif %}
     forward_auth 127.0.0.1:{{ authelia_port }} {
-        uri /api/verify?rd=https://auth.{{ domain_name }}
+        uri /api/authz/forward-auth
         copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
     }
     reverse_proxy 127.0.0.1:{{ grafana_port }}
@@ -27,7 +27,7 @@ prometheus.{{ domain_name }} {
 :9091 {
 {% endif %}
     forward_auth 127.0.0.1:{{ authelia_port }} {
-        uri /api/verify?rd=https://auth.{{ domain_name }}
+        uri /api/authz/forward-auth
         copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
     }
     reverse_proxy 127.0.0.1:{{ prometheus_port }}
@@ -40,10 +40,44 @@ loki.{{ domain_name }} {
 :3101 {
 {% endif %}
     forward_auth 127.0.0.1:{{ authelia_port }} {
-        uri /api/verify?rd=https://auth.{{ domain_name }}
+        uri /api/authz/forward-auth
         copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
     }
     reverse_proxy 127.0.0.1:{{ loki_port }}
+}
+
+# Remnawave panel subdomain (proxy to VPN server)
+{% if domain_name != "YOUR_DOMAIN_OR_IP" %}
+panel.{{ domain_name }} {
+{% else %}
+:9093 {
+{% endif %}
+    forward_auth 127.0.0.1:{{ authelia_port }} {
+        uri /api/authz/forward-auth
+        copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
+        header_up X-Forwarded-Method {method}
+        header_up X-Forwarded-URI {uri}
+    }
+    reverse_proxy http://{{ remnawave_server_ip }}:80 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+# Remnawave Subscription Page (no auth required)
+{% if domain_name != "YOUR_DOMAIN_OR_IP" %}
+sub.{{ domain_name }} {
+{% else %}
+:9094 {
+{% endif %}
+    reverse_proxy http://{{ remnawave_server_ip }}:80 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
 }
 
 # Main domain - serve personal website
@@ -52,6 +86,7 @@ loki.{{ domain_name }} {
 {% else %}
 :80 {
 {% endif %}
+    # Fallback to personal website
     reverse_proxy 127.0.0.1:{{ personal_website_port }}
 }
 
@@ -64,13 +99,13 @@ projects.{{ domain_name }} {
 {% for project in projects %}
     # Redirect project path without trailing slash to add trailing slash
     redir /{{ project.name }} /{{ project.name }}/ permanent
-    
+
     # Handle main app page
     handle /{{ project.name }}/* {
         uri strip_prefix /{{ project.name }}
         reverse_proxy 127.0.0.1:{{ project.port }}
     }
-    
+
     # Handle any absolute paths from {{ project.name }} (based on referer)
     @{{ project.name }}_assets {
         header Referer *{{ project.name }}*
