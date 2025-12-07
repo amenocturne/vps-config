@@ -13,6 +13,7 @@ services:
       - APP_PORT={{ subscription_page_port }}
       - META_TITLE={{ subscription_page_meta_title }}
       - META_DESCRIPTION={{ subscription_page_meta_description }}
+      - TRUST_PROXY=true
     ports:
       - '127.0.0.1:{{ subscription_page_port }}:{{ subscription_page_port }}'
     networks:

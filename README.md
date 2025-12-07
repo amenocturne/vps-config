@@ -38,6 +38,10 @@ This project includes comprehensive documentation organized into specialized gui
 - **[Development Guide](docs/development.md)** - Local testing and contribution guidelines
 - **[Customization Guide](docs/customization.md)** - Extending and modifying the setup
 
+### Remnawave VPN
+- **[Remnawave Setup Guide](docs/REMNAWAVE_SETUP.md)** - Complete step-by-step VPN deployment
+- **[Deploying Multiple Nodes](docs/deploying-multiple-nodes.md)** - Add nodes in different locations
+
 ## 🚀 Quick Start
 
 ### Prerequisites

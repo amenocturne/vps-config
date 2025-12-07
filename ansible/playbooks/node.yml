@@ -1,0 +1,20 @@
+---
+# Deploy Remnawave VPN Nodes
+# This playbook deploys VPN nodes without the panel/backend
+# Use this for deploying multiple nodes from a single inventory
+
+- name: Deploy Remnawave VPN Nodes
+  hosts: remnawave_nodes
+  become: true
+  vars_files:
+    - "{{ playbook_dir }}/../inventories/remnawave-test/.secrets.yml"
+  pre_tasks:
+    - name: Set node-specific secret key
+      set_fact:
+        remnawave_node_secret_key: "{{ node_secret_keys[inventory_hostname] }}"
+      when: node_secret_keys is defined and inventory_hostname in node_secret_keys
+  roles:
+    - { role: common, tags: ['common', 'setup'] }
+    - { role: security, tags: ['security', 'setup'] }
+    - { role: docker, tags: ['docker', 'setup'] }
+    - { role: remnawave-node, tags: ['node', 'vpn'] }

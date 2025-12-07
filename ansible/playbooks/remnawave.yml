@@ -1,7 +1,7 @@
 ---
 - name: Configure Remnawave VPN Server
   hosts: remnawave
-  become: yes
+  become: true
   vars_files:
     - "{{ inventory_dir }}/.secrets.yml"
   roles:

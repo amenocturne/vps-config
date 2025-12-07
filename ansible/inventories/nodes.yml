@@ -1,0 +1,113 @@
+---
+# Remnawave VPN Nodes Inventory
+# Add all your VPN node IPs here and deploy them all at once with: just deploy-nodes
+
+all:
+  children:
+    remnawave_nodes:
+      hosts:
+        # First node (initial deployment)
+        node-1:
+          ansible_host: 64.111.92.2
+          node_name: "Netherlands"
+          vless_ws_domain: "nl1.rutube.dad"
+
+        # Second node
+        node-2:
+          ansible_host: 162.33.177.182
+          node_name: "US"
+          vless_ws_domain: "us1.rutube.dad"
+
+        # node-3:
+        #   ansible_host: YOUR_THIRD_NODE_IP
+        #   node_name: "Singapore Node"
+        #   vless_ws_domain: "sg1.rutube.dad"
+
+      vars:
+        # SSH Configuration (same for all nodes)
+        ansible_user: root
+        ansible_ssh_private_key_file: ~/.ssh/bitlaunch
+        ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+        ansible_python_interpreter: /usr/bin/python3.12
+
+        # System directories
+        base_directory: "/opt"
+        logs_directory: "/opt/logs"
+
+        # Domain configuration
+        domain_name: "amenocturne.space"
+        remnawave_frontend_domain: "panel.amenocturne.space"
+
+        # Main server IP (panel server)
+        main_server_ip: "168.100.11.130"
+
+        # Network Ports
+        http_port: 80
+        https_port: 443
+
+        # Node Communication Port (panel connects to this)
+        remnawave_node_app_port: 2222
+
+        # VPN Protocol Ports
+        remnawave_node_vless_port: 443          # VLESS + WebSocket (Cloudflare CDN)
+        remnawave_node_reality_port: 8443       # VLESS + Reality (backup)
+        remnawave_node_shadowsocks_port: 8388   # Shadowsocks (optional)
+        remnawave_node_enable_shadowsocks: false
+
+        # Node Directories
+        remnawave_node_directory: "/opt/remnanode"
+        remnawave_node_log_directory: "/var/lib/remnanode"
+        remnawave_node_certs_directory: "/opt/remnanode/certs"
+
+        # VLESS + WebSocket Configuration
+        vless_ws_path: "/api/v2/ws"
+
+        # Reality Configuration (Backup - Direct Connection)
+        reality_dest: "www.speedtest.net:443"
+        reality_server_names:
+          - "www.speedtest.net"
+          - "speedtest.net"
+
+        # System Configuration
+        system_timezone: "UTC"
+        apt_cache_valid_time: 3600
+
+        # SSH Configuration
+        ssh_port: 22
+        ssh_permit_root_login: "yes"
+        ssh_password_authentication: "no"
+        ssh_pubkey_authentication: "yes"
+
+        # Security Configuration
+        fail2ban_enabled: true
+        unattended_upgrades_enabled: true
+        automatic_reboot: false
+
+        # Essential Packages
+        essential_packages:
+          - curl
+          - wget
+          - git
+          - htop
+          - unzip
+          - software-properties-common
+          - apt-transport-https
+          - ca-certificates
+          - gnupg
+          - lsb-release
+
+        # Docker Packages
+        docker_packages:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-compose-plugin
+
+        # Security Packages
+        security_packages:
+          - fail2ban
+          - unattended-upgrades
+
+        # Deployment user configuration
+        deployment_user: "deployer"
+        deployment_user_ssh_key: ""  # Optional: Add SSH key if needed

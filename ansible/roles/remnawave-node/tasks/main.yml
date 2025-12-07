@@ -31,6 +31,88 @@
     state: directory
     mode: '0755'
 
+- name: Create certificates directory on VPS
+  file:
+    path: "{{ remnawave_node_certs_directory }}"
+    state: directory
+    mode: '0755'
+
+- name: Set certificate directory paths
+  set_fact:
+    # Try multiple possible certificate locations (in order of preference)
+    cert_paths:
+      - "{{ playbook_dir }}/../inventories/nodes/certs"              # Shared certs for all nodes
+      - "{{ playbook_dir }}/../inventories/remnawave-test/certs"     # Main remnawave certs
+      - "{{ inventory_dir }}/nodes/certs"                            # Relative to inventory
+      - "{{ inventory_dir }}/certs"                                  # Alternative
+      - "{{ inventory_dir }}/nodes/certs/{{ inventory_hostname }}"   # Per-node (legacy)
+      - "{{ inventory_dir }}/{{ inventory_hostname }}/certs"         # Per-node alt (legacy)
+
+- name: Find certificate location
+  stat:
+    path: "{{ item }}/fullchain.pem"
+  register: cert_search
+  delegate_to: localhost
+  become: false
+  loop: "{{ cert_paths }}"
+
+- name: Set certificate base directory
+  set_fact:
+    cert_base_dir: "{{ item.item }}"
+  when: 
+    - cert_base_dir is not defined
+    - item.stat is defined
+    - item.stat.exists
+  loop: "{{ cert_search.results }}"
+
+- name: Check if SSL certificates exist
+  stat:
+    path: "{{ cert_base_dir | default('') }}/fullchain.pem"
+  register: cert_file
+  delegate_to: localhost
+  become: false
+  when: cert_base_dir is defined
+
+- name: Check if SSL private key exists
+  stat:
+    path: "{{ cert_base_dir | default('') }}/key.pem"
+  register: key_file
+  delegate_to: localhost
+  become: false
+  when: cert_base_dir is defined
+
+- name: Copy SSL certificate to VPS
+  copy:
+    src: "{{ cert_base_dir }}/fullchain.pem"
+    dest: "{{ remnawave_node_certs_directory }}/fullchain.pem"
+    mode: '0644'
+  when: 
+    - cert_file.stat is defined
+    - cert_file.stat.exists
+
+- name: Copy SSL private key to VPS
+  copy:
+    src: "{{ cert_base_dir }}/key.pem"
+    dest: "{{ remnawave_node_certs_directory }}/key.pem"
+    mode: '0600'
+  when: 
+    - key_file.stat is defined
+    - key_file.stat.exists
+
+- name: Display certificate status
+  debug:
+    msg: |
+      {% if cert_file.stat is defined and key_file.stat is defined and cert_file.stat.exists and key_file.stat.exists %}
+      ✅ SSL certificates found and copied to VPS
+      {% else %}
+      ⚠️  WARNING: SSL certificates not found!
+      
+      Certificate location checked: {{ cert_base_dir | default('NOT FOUND') }}
+      
+      TLS will NOT work without certificates!
+      See: ansible/inventories/nodes/certs/README.md for setup instructions.
+      {% endif %}
+
 - name: Deploy node docker-compose.yml
   template:
     src: docker-compose-node.yml.j2
@@ -43,7 +125,7 @@
     project_src: "{{ remnawave_node_directory }}"
     state: absent
   when: node_compose.changed
-  ignore_errors: yes
+  ignore_errors: true
 
 - name: Start Remnawave Node with Docker Compose
   community.docker.docker_compose_v2:
@@ -73,11 +155,20 @@
     - ansible_os_family == "Debian"
     - remnawave_node_enable_shadowsocks | default(false)
 
-- name: Configure firewall - Allow Reality destination port
+- name: Configure firewall - Allow Reality destination port (8443)
   ufw:
     rule: allow
     port: "{{ remnawave_node_reality_port }}"
     proto: tcp
+    comment: "VLESS Reality backup"
+  when: ansible_os_family == "Debian"
+
+- name: Configure firewall - Allow HTTP/3 (QUIC) for VLESS
+  ufw:
+    rule: allow
+    port: "{{ remnawave_node_vless_port }}"
+    proto: udp
+    comment: "VLESS HTTP/3 support"
   when: ansible_os_family == "Debian"
 
 - name: Install logrotate if not present
@@ -97,33 +188,94 @@
   debug:
     msg: |
       ================================================================================
-      Remnawave Node Deployment Status
+      Remnawave VPN Node Deployment Complete
       ================================================================================
 
       Node Directory: {{ remnawave_node_directory }}
       Log Directory: {{ remnawave_node_log_directory }}
 
+      NETWORK CONFIGURATION:
+      ----------------------
       Node Communication Port: {{ remnawave_node_app_port }}
-      VLESS Port: {{ remnawave_node_vless_port }}
-      Shadowsocks Port: {{ remnawave_node_shadowsocks_port }}
-      Reality Port: {{ remnawave_node_reality_port }}
+      
+      PRIMARY (Cloudflare CDN - Whitelist Bypass):
+        - Protocol: VLESS + WebSocket + TLS
+        - Domain: {{ vless_ws_domain }}
+        - Port: {{ remnawave_node_vless_port }}
+        - Path: {{ vless_ws_path }}
+        - Purpose: Routes through Cloudflare IPs (whitelisted)
+      
+      BACKUP (Reality - SNI/DPI Bypass):
+        - Protocol: VLESS + Reality
+        - Port: {{ remnawave_node_reality_port }}
+        - Destination: {{ reality_dest }}
+        - Purpose: Direct connection, masquerades as speedtest.net
 
       ================================================================================
-      NEXT STEPS:
+      CLOUDFLARE SETUP (If not done yet):
+      ================================================================================
+      
+      1. Add DNS Record in Cloudflare:
+         - Type: A
+         - Name: static (creates {{ vless_ws_domain }})
+         - IPv4: {{ ansible_host }}
+         - Proxy: ☁️ ENABLED (orange cloud - CRITICAL!)
+      
+      2. SSL/TLS Settings:
+         - Mode: Full (strict)
+         - Always Use HTTPS: ON
+      
+      3. Network Settings:
+         - WebSocket: ON (REQUIRED!)
+         - gRPC: ON
+      
+      See docs/remnawave-vpn-setup.md for detailed instructions.
+
+      ================================================================================
+      CONFIGURE INBOUNDS IN PANEL:
       ================================================================================
 
-      1. Verify the node is running:
-         docker ps | grep remnanode
+      Access panel: https://{{ remnawave_frontend_domain }}
 
-      2. Check node logs:
-         docker logs remnanode -f
+      1. Create VLESS + WebSocket Inbound:
+         - Tag: vless-ws-cloudflare
+         - Protocol: VLESS
+         - Port: {{ remnawave_node_vless_port }}
+         - Network: WebSocket
+         - Path: {{ vless_ws_path }}
+         - Host: {{ vless_ws_domain }}
+         - TLS: Enabled
 
-      3. Verify the node appears online in your Remnawave Panel at:
-         {{ remnawave_frontend_domain }}
+      2. Update/Create Reality Inbound:
+         - Tag: vless-reality-backup
+         - Protocol: VLESS
+         - Port: {{ remnawave_node_reality_port }}
+         - Network: TCP
+         - Security: Reality
+         - Destination: {{ reality_dest }}
+         - Server Names: www.speedtest.net, speedtest.net
+         {% if reality_private_key is defined and reality_private_key | length > 0 %}
+         - Private Key: {{ reality_private_key }}
+         - Short IDs: ["", "{{ reality_short_id }}"]
+         {% else %}
+         - Private Key: ⚠️  NOT SET - Generate with: docker run --rm teddysun/xray:latest xray x25519
+         - See: docs/reality-keys-explained.md
+         {% endif %}
 
-      4. Configure your VPN inbounds in the Remnawave Panel:
-         - Create inbound configurations (VLESS, Shadowsocks, etc.)
-         - Assign inbounds to this node
-         - Test VPN connection from a client
+      ================================================================================
+      VERIFICATION COMMANDS:
+      ================================================================================
+
+      # Check node is running
+      docker ps | grep remnanode
+
+      # View logs
+      docker logs remnanode -f
+
+      # Verify ports are listening
+      ss -tlnp | grep -E '{{ remnawave_node_vless_port }}|{{ remnawave_node_reality_port }}'
+
+      # Test Cloudflare DNS (should show Cloudflare IP, NOT {{ ansible_host }})
+      dig {{ vless_ws_domain }}
 
       ================================================================================

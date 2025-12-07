@@ -30,6 +30,73 @@
     - { regexp: '^#?Port', line: 'Port {{ ssh_port }}' }
   notify: restart ssh
 
+- name: Install UFW firewall
+  apt:
+    name: ufw
+    state: present
+
+- name: Reset UFW to default state (idempotent)
+  ufw:
+    state: reset
+  when: ansible_local.ufw_configured is not defined
+
+- name: Set UFW default incoming policy to deny
+  ufw:
+    direction: incoming
+    policy: deny
+
+- name: Set UFW default outgoing policy to allow
+  ufw:
+    direction: outgoing
+    policy: allow
+
+- name: Allow SSH through firewall (prevent lockout)
+  ufw:
+    rule: allow
+    port: "{{ ssh_port }}"
+    proto: tcp
+    comment: "SSH access"
+
+- name: Allow HTTP traffic
+  ufw:
+    rule: allow
+    port: "{{ http_port }}"
+    proto: tcp
+    comment: "HTTP"
+
+- name: Allow HTTPS traffic
+  ufw:
+    rule: allow
+    port: "{{ https_port }}"
+    proto: tcp
+    comment: "HTTPS"
+
+- name: Allow HTTPS UDP (HTTP/3 QUIC)
+  ufw:
+    rule: allow
+    port: "{{ https_port }}"
+    proto: udp
+    comment: "HTTP/3 QUIC"
+
+- name: Enable UFW
+  ufw:
+    state: enabled
+
+- name: Create UFW configured fact directory
+  file:
+    path: /etc/ansible/facts.d
+    state: directory
+    mode: '0755'
+
+- name: Mark UFW as configured
+  copy:
+    content: |
+      {
+        "ufw_configured": true
+      }
+    dest: /etc/ansible/facts.d/ufw.fact
+    mode: '0644'
+
 - name: Set up automatic security updates
   apt:
     name: unattended-upgrades
@@ -42,7 +109,7 @@
       Unattended-Upgrade::Allowed-Origins {
           "${distro_id}:${distro_codename}-security";
           "${distro_id}ESMApps:${distro_codename}-apps-security";
-          "${distro_id}ESM:${distro_codename}-infra-security";
+          "${distro_id}ESM:${distro_id}-infra-security";
       };
       Unattended-Upgrade::AutoFixInterruptedDpkg "true";
       Unattended-Upgrade::MinimalSteps "true";

@@ -35,6 +35,53 @@
     regexp: "127\\.0\\.0\\.1:3000:3000"
     replace: "0.0.0.0:3000:3000"
 
+- name: Create certificates directory for panel
+  file:
+    path: "{{ remnawave_directory }}/certs"
+    state: directory
+    owner: "{{ remnawave_user }}"
+    group: "{{ remnawave_user }}"
+    mode: '0755'
+
+- name: Extract node self-signed CA certificate for panel trust
+  shell: |
+    echo "" | timeout 5 openssl s_client -connect {{ ansible_host }}:{{ remnawave_node_app_port | default('2222') }} -showcerts 2>/dev/null | \
+    awk '/BEGIN CERTIFICATE/,/END CERTIFICATE/{cert=cert$0"\n"}/END CERTIFICATE/{certs[++n]=cert;cert=""}END{print certs[n]}'
+  register: node_ca_cert
+  delegate_to: localhost
+  become: false
+  changed_when: false
+  failed_when: false
+
+- name: Display certificate extraction result
+  debug:
+    msg: |
+      {% if node_ca_cert.stdout | length > 0 %}
+      ✅ Node CA certificate extracted successfully
+      {% else %}
+      ⚠️  Could not extract node CA certificate. The panel will use NODE_TLS_REJECT_UNAUTHORIZED=0 as fallback.
+      Ensure the node is running and accessible at {{ ansible_host }}:{{ remnawave_node_app_port | default('2222') }}
+      {% endif %}
+
+- name: Save node CA certificate to panel directory
+  copy:
+    content: "{{ node_ca_cert.stdout }}"
+    dest: "{{ remnawave_directory }}/certs/node-ca.pem"
+    owner: "{{ remnawave_user }}"
+    group: "{{ remnawave_user }}"
+    mode: '0644'
+  when: node_ca_cert.stdout | length > 0
+
+- name: Add certificate volume mount to remnawave service
+  blockinfile:
+    path: "{{ remnawave_directory }}/docker-compose.yml"
+    marker: "    # {mark} ANSIBLE MANAGED - Certificate mount for node TLS verification"
+    insertafter: "    container_name: remnawave"
+    block: |2
+          volumes:
+            - {{ remnawave_directory }}/certs/node-ca.pem:/etc/ssl/certs/node-ca.pem:ro
+  when: node_ca_cert.stdout | length > 0
+
 - name: Check if secrets file exists
   stat:
     path: "{{ inventory_dir }}/.secrets.yml"

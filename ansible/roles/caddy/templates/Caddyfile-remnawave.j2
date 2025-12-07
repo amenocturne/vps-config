@@ -20,9 +20,11 @@
     # Remnawave Subscription Page
     handle @subscription {
         reverse_proxy http://remnawave-subscription-page:{{ subscription_page_port }} {
+            # Force HTTPS headers for ProxyCheckMiddleware
             header_up X-Forwarded-Proto https
-            header_up X-Forwarded-For {http.request.header.X-Forwarded-For}
-            header_up X-Forwarded-Host {http.request.header.X-Forwarded-Host}
+            header_up X-Forwarded-Host {http.request.header.X-Forwarded-Host>sub.{{ domain_name }}}
+            header_up X-Forwarded-For {http.request.header.X-Forwarded-For>{remote_host}}
+            header_up Host {http.request.header.Host>sub.{{ domain_name }}}
         }
     }
 

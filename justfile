@@ -159,3 +159,55 @@ logs-remnawave service="remnawave":
 ssh-remnawave command="uptime":
     @echo "🔐 Running command on Remnawave VPN server: {{command}}"
     cd ansible && ansible remnawave -i inventories/remnawave-test.yml -m shell -a "{{command}}"
+
+# VPN Nodes Deployment Commands
+
+# Deploy all VPN nodes
+deploy-nodes:
+    @echo "🚀 Deploying all VPN nodes..."
+    cd ansible && ansible-playbook playbooks/node.yml -i inventories/nodes.yml
+
+# Deploy all VPN nodes with verbose output
+deploy-nodes-verbose:
+    @echo "🚀 Deploying all VPN nodes (verbose)..."
+    cd ansible && ansible-playbook playbooks/node.yml -i inventories/nodes.yml -v
+
+# Check nodes playbook syntax
+check-nodes:
+    @echo "🔍 Checking nodes playbook syntax..."
+    cd ansible && ansible-playbook playbooks/node.yml --syntax-check -i inventories/nodes.yml
+
+# Run nodes deployment in dry-run mode
+dry-run-nodes:
+    @echo "🧪 Running nodes deployment dry-run..."
+    cd ansible && ansible-playbook playbooks/node.yml -i inventories/nodes.yml --check
+
+# Test all nodes connectivity
+ping-nodes:
+    @echo "📡 Testing all nodes connectivity..."
+    cd ansible && ansible remnawave_nodes -i inventories/nodes.yml -m ping
+
+# View logs from all nodes
+logs-nodes service="remnanode":
+    @echo "📋 Viewing {{service}} logs from all nodes..."
+    cd ansible && ansible remnawave_nodes -i inventories/nodes.yml -m shell -a "docker logs --tail 50 {{service}}"
+
+# Restart all node services
+restart-nodes:
+    @echo "🔄 Restarting all node services..."
+    cd ansible && ansible remnawave_nodes -i inventories/nodes.yml -m shell -a "docker restart remnanode"
+
+# SSH to all nodes
+ssh-nodes command="uptime":
+    @echo "🔐 Running command on all nodes: {{command}}"
+    cd ansible && ansible remnawave_nodes -i inventories/nodes.yml -m shell -a "{{command}}"
+
+# Deploy specific node by name (e.g., node-1, node-2)
+deploy-node-single node:
+    @echo "🚀 Deploying {{node}}..."
+    cd ansible && ansible-playbook playbooks/node.yml -i inventories/nodes.yml --limit {{node}}
+
+# View logs from specific node
+logs-node-single node service="remnanode":
+    @echo "📋 Viewing {{service}} logs from {{node}}..."
+    cd ansible && ansible {{node}} -i inventories/nodes.yml -m shell -a "docker logs --tail 50 {{service}}"

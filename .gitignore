@@ -91,3 +91,16 @@ ansible/inventories/**/.secrets.yml
 .secrets/
 ansible/**/node_compose.yml
 **/node_compose.yml
+
+# SSL/TLS Certificates and Private Keys
+*.pem
+*.crt
+*.key
+*.csr
+*.p12
+*.pfx
+certificates/
+ansible/inventories/**/certs/
+ansible/inventories/**/certificates/
+!**/*_example.pem
+!**/*_template.pem

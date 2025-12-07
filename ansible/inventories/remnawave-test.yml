@@ -27,6 +27,10 @@ all:
     remnawave_frontend_domain: "panel.amenocturne.space"
     remnawave_sub_domain: "sub.amenocturne.space"
 
+    # Cloudflare configuration
+    cloudflare_zone_id: "aafc70fc2554249c7e8a50c7bcd3cf1d"
+    vpn_subdomain: "*.rutube.dad"
+
     # System configuration
     system_timezone: "UTC"
     apt_cache_valid_time: 3600

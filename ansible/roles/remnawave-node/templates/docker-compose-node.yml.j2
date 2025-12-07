@@ -6,7 +6,7 @@ services:
   remnanode:
     container_name: remnanode
     hostname: remnanode
-    image: remnawave/node:latest
+    image: remnawave/node:2.2.3
     network_mode: host
     restart: always
     environment:
@@ -14,3 +14,5 @@ services:
       - SECRET_KEY={{ remnawave_node_secret_key }}
     volumes:
       - '{{ remnawave_node_log_directory }}:{{ remnawave_node_log_directory }}'
+      # SSL/TLS certificates for VLESS + WebSocket
+      - '{{ remnawave_node_certs_directory }}:/etc/xray/certs:ro'
