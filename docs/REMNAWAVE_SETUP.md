@@ -241,13 +241,43 @@ node_secret_keys:
 just deploy-remnawave
 ```
 
-### 6.5 Verify Node is Online
+### 6.5 Extract Node SSL Certificates for Panel Trust
 
-1. Go back to the panel
-2. Go to **Nodes** section
-3. Your node should now show as **Online** (green indicator)
+**CRITICAL**: The panel uses secure TLS connections to communicate with nodes. You must extract the node's SSL certificate and add it to the panel's trust store.
 
-If it's not online after 30 seconds, check logs:
+```bash
+# Option 1: Automatic extraction (recommended)
+just extract-node-certs
+
+# This will:
+# 1. Extract certificates from all running nodes
+# 2. Create a CA bundle
+# 3. Copy it to the panel server
+# 4. Restart the panel
+
+# Option 2: Manual extraction (if automatic fails)
+# Extract certificate from node
+echo "" | openssl s_client -connect 64.111.92.2:2222 -showcerts 2>/dev/null | \
+  openssl x509 -outform PEM > node-cert.pem
+
+# Copy to panel server
+scp node-cert.pem root@64.111.92.2:/opt/remnawave/certs/remnawave-nodes-ca.pem
+
+# Set permissions
+ssh root@64.111.92.2 "chown remnawave:remnawave /opt/remnawave/certs/remnawave-nodes-ca.pem"
+
+# Restart panel
+ssh root@64.111.92.2 "cd /opt/remnawave && docker compose restart"
+```
+
+### 6.6 Verify Node is Online
+
+1. Wait 30 seconds for panel to restart
+2. Go back to the panel: `https://panel.amenocturne.space`
+3. Go to **Nodes** section
+4. Your node should now show as **Online** (green indicator)
+
+If it's not online, troubleshoot:
 ```bash
 just logs-remnawave remnanode
 ```

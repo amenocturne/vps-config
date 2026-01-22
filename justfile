@@ -211,3 +211,13 @@ deploy-node-single node:
 logs-node-single node service="remnanode":
     @echo "📋 Viewing {{service}} logs from {{node}}..."
     cd ansible && ansible {{node}} -i inventories/nodes.yml -m shell -a "docker logs --tail 50 {{service}}"
+
+# Extract SSL certificates from nodes for panel trust
+extract-node-certs:
+    @echo "🔐 Extracting node SSL certificates..."
+    ./scripts/extract-node-certificates.sh
+
+# Diagnose VPN connectivity issues
+diagnose-vpn:
+    @echo "🔍 Diagnosing VPN connectivity..."
+    ./scripts/diagnose-vpn-connectivity.sh

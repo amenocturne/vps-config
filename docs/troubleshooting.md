@@ -190,6 +190,218 @@ just ssh "curl -s http://localhost:2019/config/ | jq '.'"
 
 ## Service-Specific Issues
 
+### Remnawave VPN Connection Issues
+
+#### VPN Client Timeouts (Reality Works, WebSocket Doesn't)
+
+**Symptoms**: 
+- Reality protocol connections work fine
+- VLESS + WebSocket connections timeout
+- Nodes show as "Online" in panel
+- Panel can communicate with nodes
+
+**Root Cause**: DNS/Cloudflare misconfiguration for VLESS + WebSocket protocol
+
+**Quick Diagnostic**:
+```bash
+# Run automated diagnostic
+just diagnose-vpn
+
+# Manual check - should return Cloudflare IPs (104.x or 172.x), NOT node IPs
+dig +short nl1.rutube.dad
+dig +short us1.rutube.dad
+```
+
+**Solutions**:
+
+1. **Fix DNS Records in Cloudflare**:
+   - Go to Cloudflare DNS settings for your domain (`rutube.dad`)
+   - For EACH node, add/update A record:
+     - `nl1` → `64.111.92.2` (node-1 IP)
+     - `us1` → `162.33.177.182` (node-2 IP)
+   - **CRITICAL**: Enable Cloudflare Proxy (click cloud icon until it's ORANGE)
+   
+2. **Enable WebSocket in Cloudflare**:
+   - Go to Cloudflare → Network settings
+   - Enable **WebSocket** toggle
+   - Save changes
+
+3. **Verify SSL Settings**:
+   - Go to Cloudflare → SSL/TLS
+   - Set to **Full (strict)**
+   - Enable "Always Use HTTPS"
+
+4. **Verify Changes**:
+   ```bash
+   # DNS should now return Cloudflare IPs
+   dig +short nl1.rutube.dad
+   # Expected: 104.x.x.x or 172.x.x.x (Cloudflare)
+   # NOT: 64.111.92.2 (your node IP)
+   
+   # Check Cloudflare is proxying
+   curl -I https://nl1.rutube.dad | grep cf-ray
+   # Should show: cf-ray header
+   ```
+
+5. **Test VPN Connection**:
+   - Wait 2-5 minutes for DNS changes to propagate
+   - Reconnect VPN client
+   - VLESS + WebSocket should now work
+
+**See detailed guide**: `docs/REMNAWAVE_DNS_SETUP.md`
+
+#### Nodes Timing Out in Panel (Node Offline)
+
+**Symptoms**: VPN nodes show as offline or timeout when clients try to connect through the panel
+
+**Root Cause**: The panel cannot establish a secure TLS connection to nodes on port 2222
+
+**Common Causes**:
+1. Panel doesn't have node SSL certificates in its CA bundle
+2. Nodes not running or not listening on port 2222
+3. Firewall blocking port 2222
+4. Network connectivity issues between panel and nodes
+
+**Diagnostic Steps**:
+```bash
+# 1. Check if nodes are running
+just ssh-nodes "docker ps | grep remnanode"
+
+# 2. Check if port 2222 is listening on nodes
+just ssh-nodes "ss -tlnp | grep :2222"
+
+# 3. Test TLS connectivity from control machine
+for node in 64.111.92.2 162.33.177.182; do
+  echo "Testing $node..."
+  echo "" | timeout 5 openssl s_client -connect $node:2222 2>/dev/null | grep -E "Verify return code|subject="
+done
+
+# 4. Check panel has node certificates
+just ssh-remnawave "cat /opt/remnawave/certs/remnawave-nodes-ca.pem"
+
+# 5. Check panel .env configuration
+just ssh-remnawave "grep NODE_EXTRA_CA_CERTS /opt/remnawave/.env"
+
+# 6. Check panel logs for TLS errors
+just logs-remnawave | grep -i "tls\|certificate\|timeout\|node"
+
+# 7. Check node logs
+just logs-nodes
+```
+
+**Solutions**:
+
+**IMPORTANT**: This setup uses SECURE TLS connections. We do NOT bypass certificate validation.
+
+1. **Re-extract Node Certificates** (Recommended):
+   ```bash
+   # Deploy nodes first to ensure they're running
+   just deploy-nodes
+   
+   # Redeploy panel - this will auto-extract node certificates
+   just deploy-remnawave
+   
+   # Verify certificates were extracted
+   just ssh-remnawave "wc -l /opt/remnawave/certs/remnawave-nodes-ca.pem"
+   # Should show multiple lines (one cert per node)
+   ```
+
+2. **Manual Certificate Extraction** (if auto-extraction fails):
+   ```bash
+   # On your local machine, extract from each node
+   echo "" | openssl s_client -connect 64.111.92.2:2222 -showcerts 2>/dev/null | \
+     openssl x509 -outform PEM > node-1-cert.pem
+   
+   echo "" | openssl s_client -connect 162.33.177.182:2222 -showcerts 2>/dev/null | \
+     openssl x509 -outform PEM > node-2-cert.pem
+   
+   # Combine into CA bundle
+   cat node-*-cert.pem > remnawave-nodes-ca.pem
+   
+   # Copy to panel server
+   scp remnawave-nodes-ca.pem root@YOUR_PANEL_IP:/opt/remnawave/certs/
+   
+   # Set permissions
+   just ssh-remnawave "chown remnawave:remnawave /opt/remnawave/certs/remnawave-nodes-ca.pem"
+   just ssh-remnawave "chmod 644 /opt/remnawave/certs/remnawave-nodes-ca.pem"
+   
+   # Restart panel
+   just ssh-remnawave "cd /opt/remnawave && docker compose restart"
+   ```
+
+3. **Verify Certificates Are Working**:
+   ```bash
+   # Check panel logs for successful node connections
+   just logs-remnawave | tail -50
+   
+   # Check node status in panel UI
+   # Visit https://panel.yourdomain.com/nodes
+   # Nodes should show as "Online" with green status
+   ```
+
+**Prevention**:
+- Always deploy nodes BEFORE deploying the panel
+- Ensure port 2222 is accessible from your control machine during deployment
+- Keep firewall rules open for port 2222
+- Re-run panel deployment after adding new nodes to update certificate bundle
+
+#### Node Communication Port Blocked
+
+**Symptoms**: Panel shows "Node offline" or "Connection refused"
+
+**Diagnostic Steps**:
+```bash
+# Check firewall rules on node
+just ssh-nodes "sudo ufw status | grep 2222"
+
+# Test from panel server
+just ssh-remnawave "nc -zv NODE_IP 2222"
+
+# Check if node is listening
+just ssh-nodes "ss -tlnp | grep :2222"
+```
+
+**Solutions**:
+```bash
+# Ensure firewall allows port 2222
+just ssh-nodes "sudo ufw allow 2222/tcp comment 'Remnawave panel API'"
+
+# Verify node container is running with host network
+just ssh-nodes "docker inspect remnanode | grep NetworkMode"
+# Should show: "NetworkMode": "host"
+
+# Restart node if needed
+just restart-nodes
+```
+
+#### Node SSL Certificate Issues
+
+**Symptoms**: TLS handshake errors, certificate verification failures
+
+**Diagnostic Steps**:
+```bash
+# Check if node has SSL certificates
+just ssh-nodes "ls -la /opt/remnanode/certs/"
+
+# View certificate details
+just ssh-nodes "openssl x509 -in /opt/remnanode/certs/fullchain.pem -text -noout | grep -A 2 'Validity'"
+
+# Test TLS connection
+just ssh-remnawave "openssl s_client -connect NODE_IP:2222 -showcerts"
+```
+
+**Solutions**:
+```bash
+# Panel now automatically disables TLS verification when needed
+# If issues persist, check panel .env file
+just ssh-remnawave "grep TLS /opt/remnawave/.env"
+
+# Should show either:
+# NODE_EXTRA_CA_CERTS=/etc/ssl/certs/node-ca.pem
+# OR
+# NODE_TLS_REJECT_UNAUTHORIZED=0
+```
+
 ### Authelia Problems
 
 #### Can't Login / "Incorrect Password"

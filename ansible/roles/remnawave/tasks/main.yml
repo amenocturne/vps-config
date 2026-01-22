@@ -43,34 +43,113 @@
     group: "{{ remnawave_user }}"
     mode: '0755'
 
-- name: Extract node self-signed CA certificate for panel trust
+# Load node inventory to get all node IPs
+- name: Load nodes inventory
+  include_vars:
+    file: "{{ playbook_dir }}/../inventories/nodes.yml"
+    name: nodes_inventory
+  ignore_errors: true
+
+- name: Extract node IPs from inventory
+  set_fact:
+    node_hosts: "{{ nodes_inventory.all.children.remnawave_nodes.hosts | dict2items | map(attribute='value.ansible_host') | list }}"
+  when: nodes_inventory is defined
+
+- name: Extract SSL certificates from all running nodes
   shell: |
-    echo "" | timeout 5 openssl s_client -connect {{ ansible_host }}:{{ remnawave_node_app_port | default('2222') }} -showcerts 2>/dev/null | \
-    awk '/BEGIN CERTIFICATE/,/END CERTIFICATE/{cert=cert$0"\n"}/END CERTIFICATE/{certs[++n]=cert;cert=""}END{print certs[n]}'
-  register: node_ca_cert
+    echo "" | timeout 5 openssl s_client -connect {{ item }}:{{ remnawave_node_app_port | default('2222') }} -showcerts 2>/dev/null | \
+    awk '/BEGIN CERTIFICATE/,/END CERTIFICATE/{print}' | \
+    awk '/BEGIN CERTIFICATE/,/END CERTIFICATE/{cert=cert$0"\n"}/END CERTIFICATE/{if(length(cert)>0){print cert; exit}; cert=""}'
+  register: node_certs_extracted
   delegate_to: localhost
   become: false
   changed_when: false
   failed_when: false
+  loop: "{{ node_hosts | default([]) }}"
+  when: node_hosts is defined and node_hosts | length > 0
 
-- name: Display certificate extraction result
-  debug:
-    msg: |
-      {% if node_ca_cert.stdout | length > 0 %}
-      ✅ Node CA certificate extracted successfully
-      {% else %}
-      ⚠️  Could not extract node CA certificate. The panel will use NODE_TLS_REJECT_UNAUTHORIZED=0 as fallback.
-      Ensure the node is running and accessible at {{ ansible_host }}:{{ remnawave_node_app_port | default('2222') }}
-      {% endif %}
-
-- name: Save node CA certificate to panel directory
+- name: Create temporary CA bundle file locally
   copy:
-    content: "{{ node_ca_cert.stdout }}"
-    dest: "{{ remnawave_directory }}/certs/node-ca.pem"
+    content: |
+      # Remnawave Node CA Bundle
+      # Auto-generated from running nodes
+      # Generated: {{ ansible_date_time.iso8601 }}
+      {% for result in node_certs_extracted.results %}
+      {% if result.stdout | length > 0 %}
+      # Node: {{ result.item }}
+      {{ result.stdout }}
+      {% endif %}
+      {% endfor %}
+    dest: "/tmp/remnawave-nodes-ca.pem"
+  delegate_to: localhost
+  become: false
+  when: 
+    - node_certs_extracted is defined
+    - node_certs_extracted.results | selectattr('stdout', 'defined') | selectattr('stdout') | list | length > 0
+
+- name: Copy CA bundle to panel server
+  copy:
+    src: "/tmp/remnawave-nodes-ca.pem"
+    dest: "{{ remnawave_directory }}/certs/remnawave-nodes-ca.pem"
     owner: "{{ remnawave_user }}"
     group: "{{ remnawave_user }}"
     mode: '0644'
-  when: node_ca_cert.stdout | length > 0
+  when: 
+    - node_certs_extracted is defined
+    - node_certs_extracted.results | selectattr('stdout', 'defined') | selectattr('stdout') | list | length > 0
+
+- name: Count successfully extracted certificates
+  set_fact:
+    certs_extracted_count: "{{ node_certs_extracted.results | selectattr('stdout', 'defined') | selectattr('stdout') | list | length }}"
+  when: node_certs_extracted is defined
+
+- name: Verify node certificates were extracted
+  assert:
+    that:
+      - node_certs_extracted is defined
+      - certs_extracted_count | default(0) | int > 0
+    fail_msg: |
+      ================================================================================
+      ❌ ERROR: Cannot extract SSL certificates from VPN nodes!
+      ================================================================================
+      
+      The panel REQUIRES valid SSL certificates from all nodes to establish
+      secure TLS connections on port 2222.
+      
+      TROUBLESHOOTING:
+      ----------------
+      1. Ensure nodes are deployed and running:
+         just deploy-nodes
+         just ssh-nodes "docker ps | grep remnanode"
+      
+      2. Verify nodes are listening on port 2222:
+         just ssh-nodes "ss -tlnp | grep :2222"
+      
+      3. Check network connectivity from control machine:
+      {% if node_hosts is defined %}
+      {% for host in node_hosts %}
+         nc -zv {{ host }} 2222
+      {% endfor %}
+      {% endif %}
+      
+      4. Verify firewall allows port 2222:
+         just ssh-nodes "sudo ufw status | grep 2222"
+      
+      5. If nodes are behind NAT/firewall, you may need to:
+         - Temporarily open port 2222 during deployment
+         - Or manually extract certificates and place in inventory
+      
+      MANUAL CERTIFICATE EXTRACTION:
+      -------------------------------
+      Run on each node:
+         openssl s_client -connect 127.0.0.1:2222 -showcerts < /dev/null 2>/dev/null | \
+         openssl x509 > node-X-cert.pem
+      
+      Then combine all certificates:
+         cat node-*-cert.pem > {{ inventory_dir }}/node-ca-bundle.pem
+      
+      And copy to panel manually.
+      ================================================================================
 
 - name: Add certificate volume mount to remnawave service
   blockinfile:
@@ -79,8 +158,17 @@
     insertafter: "    container_name: remnawave"
     block: |2
           volumes:
-            - {{ remnawave_directory }}/certs/node-ca.pem:/etc/ssl/certs/node-ca.pem:ro
-  when: node_ca_cert.stdout | length > 0
+            - {{ remnawave_directory }}/certs/remnawave-nodes-ca.pem:/etc/ssl/certs/remnawave-nodes-ca.pem:ro
+
+- name: Display certificate configuration status
+  debug:
+    msg: |
+      ✅ Node SSL certificates configured successfully
+      
+      Certificates extracted from {{ certs_extracted_count }} nodes
+      CA Bundle: {{ remnawave_directory }}/certs/remnawave-nodes-ca.pem
+      
+      The panel will use secure TLS connections to all nodes on port 2222.
 
 - name: Check if secrets file exists
   stat:

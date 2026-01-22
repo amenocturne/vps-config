@@ -137,6 +137,7 @@
     rule: allow
     port: "{{ remnawave_node_app_port }}"
     proto: tcp
+    comment: "Remnawave panel API - must be accessible from panel server"
   when: ansible_os_family == "Debian"
 
 - name: Configure firewall - Allow VLESS protocol (port 443)
@@ -183,6 +184,23 @@
     src: logrotate-node.j2
     dest: /etc/logrotate.d/remnanode
     mode: '0644'
+
+- name: Wait for node to start
+  wait_for:
+    port: "{{ remnawave_node_app_port }}"
+    delay: 5
+    timeout: 30
+    msg: "Node did not start within 30 seconds"
+
+- name: Verify node is responding on API port
+  uri:
+    url: "https://127.0.0.1:{{ remnawave_node_app_port }}/health"
+    validate_certs: false
+    method: GET
+    status_code: [200, 404]  # 404 is ok if health endpoint doesn't exist
+  register: node_health_check
+  failed_when: false
+  changed_when: false
 
 - name: Display node status
   debug:
@@ -263,11 +281,31 @@
          {% endif %}
 
       ================================================================================
+      NODE CONNECTIVITY STATUS:
+      ================================================================================
+      {% if node_health_check is defined and node_health_check.status is defined %}
+      ✅ Node is responding on port {{ remnawave_node_app_port }} (Status: {{ node_health_check.status }})
+      {% else %}
+      ⚠️  Node connectivity check was skipped or failed
+      {% endif %}
+
+      IMPORTANT FOR PANEL CONNECTIVITY:
+      ----------------------------------
+      The panel must be able to reach this node at:
+        https://{{ ansible_host }}:{{ remnawave_node_app_port }}
+      
+      The panel uses SECURE TLS connections and needs this node's certificate.
+      Certificate extraction happens automatically during panel deployment.
+
+      ================================================================================
       VERIFICATION COMMANDS:
       ================================================================================
 
       # Check node is running
       docker ps | grep remnanode
+      
+      # Extract node's SSL certificate (for manual setup)
+      echo "" | openssl s_client -connect 127.0.0.1:{{ remnawave_node_app_port }} -showcerts 2>/dev/null | openssl x509 -outform PEM
 
       # View logs
       docker logs remnanode -f
