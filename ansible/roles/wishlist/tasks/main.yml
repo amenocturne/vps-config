@@ -1,0 +1,28 @@
+---
+- name: Create Wishlist directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  loop:
+    - "{{ wishlist_directory }}"
+    - "{{ wishlist_directory }}/data"
+    - "{{ wishlist_directory }}/uploads"
+
+- name: Create Wishlist Docker Compose file
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ wishlist_directory }}/docker-compose.yml"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart wishlist
+
+- name: Start Wishlist service
+  shell: |
+    cd {{ wishlist_directory }}
+    docker compose up -d
+  register: wishlist_result
+  changed_when: "'Started' in wishlist_result.stderr or 'Created' in wishlist_result.stderr"

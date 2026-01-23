@@ -9,5 +9,6 @@
     - { role: authelia, tags: ['authelia'] }
     - { role: projects, tags: ['projects'] }
     - { role: personal-website, tags: ['personal-website'] }
+    - { role: wishlist, tags: ['wishlist'] }
     - { role: caddy, tags: ['caddy'] }
     - { role: monitoring, tags: ['monitoring'] }

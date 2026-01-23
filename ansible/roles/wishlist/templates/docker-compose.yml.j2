@@ -1,0 +1,12 @@
+services:
+  wishlist:
+    image: {{ wishlist_image }}
+    container_name: wishlist
+    ports:
+      - "127.0.0.1:{{ wishlist_port }}:3280"
+    volumes:
+      - {{ wishlist_directory }}/uploads:/usr/src/app/uploads
+      - {{ wishlist_directory }}/data:/usr/src/app/data
+    environment:
+      ORIGIN: https://wishlist.{{ domain_name }}
+    restart: unless-stopped

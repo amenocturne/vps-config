@@ -18,6 +18,11 @@ all:
     portainer_port: 9000
     personal_website_port: 8002
 
+    # Wishlist configuration
+    wishlist_port: 3280
+    wishlist_directory: "/opt/wishlist"
+    wishlist_image: "ghcr.io/cmintey/wishlist:latest"
+
     # Remnawave configuration
     remnawave_server_ip: "64.111.92.2"
     remnawave_app_port: 3000

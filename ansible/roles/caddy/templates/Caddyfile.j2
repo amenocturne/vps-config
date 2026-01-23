@@ -82,6 +82,15 @@ sub.{{ domain_name }} {
     }
 }
 
+# Wishlist app (has own authentication)
+{% if domain_name != "YOUR_DOMAIN_OR_IP" %}
+wishlist.{{ domain_name }} {
+{% else %}
+:3281 {
+{% endif %}
+    reverse_proxy 127.0.0.1:{{ wishlist_port }}
+}
+
 # Main domain - serve personal website
 {% if domain_name != "YOUR_DOMAIN_OR_IP" %}
 {{ domain_name }} {
