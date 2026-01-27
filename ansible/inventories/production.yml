@@ -121,3 +121,7 @@ all:
         type: static
         port: 8001
         auth_required: false
+      - name: rouletto
+        type: dynamic
+        port: 8003
+        auth_required: false
