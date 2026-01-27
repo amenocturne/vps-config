@@ -125,3 +125,4 @@ all:
         type: dynamic
         port: 8003
         auth_required: false
+        strip_prefix: false

@@ -113,10 +113,13 @@ projects.{{ domain_name }} {
 
     # Handle main app page
     handle /{{ project.name }}/* {
+{% if project.strip_prefix | default(true) %}
         uri strip_prefix /{{ project.name }}
+{% endif %}
         reverse_proxy 127.0.0.1:{{ project.port }}
     }
 
+{% if project.strip_prefix | default(true) %}
     # Handle any absolute paths from {{ project.name }} (based on referer)
     @{{ project.name }}_assets {
         header Referer *{{ project.name }}*
@@ -125,5 +128,6 @@ projects.{{ domain_name }} {
     handle @{{ project.name }}_assets {
         reverse_proxy 127.0.0.1:{{ project.port }}
     }
+{% endif %}
 {% endfor %}
 }
