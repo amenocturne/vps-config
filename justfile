@@ -92,6 +92,11 @@ deploy-authelia:
     @echo "🔒 Deploying Authelia..."
     cd ansible && ansible-playbook playbooks/site.yml -i inventories/production.yml --tags authelia
 
+# Deploy Caddy only
+deploy-caddy:
+    @echo "🌐 Deploying Caddy..."
+    cd ansible && ansible-playbook playbooks/site.yml -i inventories/production.yml --tags caddy
+
 # Deploy Grafana only
 deploy-grafana:
     @echo "📊 Deploying Grafana..."
