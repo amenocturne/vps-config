@@ -1,0 +1,11 @@
+---
+- name: update grub
+  command: update-grub
+
+- name: setupcon
+  command: setupcon --force
+
+- name: restart logind
+  systemd:
+    name: systemd-logind
+    state: restarted

@@ -1,0 +1,32 @@
+---
+# Home server overrides (MacBook Pro 2017, Ubuntu 24.04)
+
+system_timezone: "Europe/Moscow"
+apt_cache_valid_time: 3600
+
+# Directory structure
+base_directory: "/opt"
+logs_directory: "/opt/logs"
+
+# Reuse common role — skril already exists, tasks are harmless
+deployment_user: "skril"
+deployment_user_ssh_key: ""
+
+# SSH configuration
+ssh_permit_root_login: "no"
+
+# Auto-reboot on security updates is fine for a home server
+automatic_reboot: true
+
+essential_packages:
+  - curl
+  - wget
+  - git
+  - htop
+  - unzip
+  - apt-transport-https
+  - ca-certificates
+  - gnupg
+  - lsb-release
+  - vim
+  - tmux

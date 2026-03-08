@@ -1,0 +1,11 @@
+---
+# Configure MacBook Pro 2017 running Ubuntu 24.04 as home server
+
+- name: Configure Home Server
+  hosts: home_server
+  become: true
+  roles:
+    - apt-mirror
+    - macbook-console
+    - common
+    - security

@@ -1,0 +1,50 @@
+---
+# HiDPI console fix for MacBook Pro Retina display
+# Without this, the TTY console text is microscopic on the Retina panel
+
+- name: Set GRUB graphics mode for HiDPI display
+  lineinfile:
+    path: /etc/default/grub
+    regexp: '^GRUB_GFXMODE='
+    line: 'GRUB_GFXMODE=1024x768'
+  notify: update grub
+
+- name: Set GRUB to keep graphics mode for Linux
+  lineinfile:
+    path: /etc/default/grub
+    regexp: '^GRUB_GFXPAYLOAD_LINUX='
+    line: 'GRUB_GFXPAYLOAD_LINUX=keep'
+  notify: update grub
+
+- name: Enable PCIe native mode for USB-C/Thunderbolt
+  lineinfile:
+    path: /etc/default/grub
+    regexp: '^GRUB_CMDLINE_LINUX_DEFAULT='
+    line: 'GRUB_CMDLINE_LINUX_DEFAULT="pcie_ports=native"'
+  notify: update grub
+
+- name: Install console font package
+  apt:
+    name: console-setup
+    state: present
+
+- name: Configure console font for HiDPI (Terminus 16x32)
+  lineinfile:
+    path: /etc/default/console-setup
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  loop:
+    - { regexp: '^FONTFACE=', line: 'FONTFACE="Terminus"' }
+    - { regexp: '^FONTSIZE=', line: 'FONTSIZE="16x32"' }
+  notify: setupcon
+
+- name: Ignore lid switch (headless server with lid closed)
+  lineinfile:
+    path: /etc/systemd/logind.conf
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  loop:
+    - { regexp: '^#?HandleLidSwitch=', line: 'HandleLidSwitch=ignore' }
+    - { regexp: '^#?HandleLidSwitchExternalPower=', line: 'HandleLidSwitchExternalPower=ignore' }
+    - { regexp: '^#?HandleLidSwitchDocked=', line: 'HandleLidSwitchDocked=ignore' }
+  notify: restart logind

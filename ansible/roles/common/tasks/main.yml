@@ -28,6 +28,7 @@
     name: "{{ deployment_user }}"
     shell: /bin/bash
     create_home: yes
+  when: not (skip_user_setup | default(false))
 
 - name: Setup SSH directory for deployment user
   file:
@@ -36,18 +37,19 @@
     owner: "{{ deployment_user }}"
     group: "{{ deployment_user }}"
     mode: '0700'
+  when: not (skip_user_setup | default(false))
 
 - name: Add SSH public key for deployment user
   authorized_key:
     user: "{{ deployment_user }}"
     key: "{{ deployment_user_ssh_key }}"
     state: present
-  when: deployment_user_ssh_key != ""
+  when: not (skip_user_setup | default(false)) and deployment_user_ssh_key != ""
 
-- name: Configure limited sudo access for deployment user
+- name: Configure sudo access for deployment user
   copy:
-    content: |
-      {{ deployment_user }} ALL=(ALL) NOPASSWD: /usr/bin/docker
+    content: "{{ sudoers_rule | default(deployment_user + ' ALL=(ALL) NOPASSWD: /usr/bin/docker') }}\n"
     dest: "/etc/sudoers.d/{{ deployment_user }}"
     mode: '0440'
     validate: 'visudo -cf %s'
+  when: not (skip_user_setup | default(false))
