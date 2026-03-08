@@ -51,9 +51,11 @@ access_control:
     - domain: "loki.{{ domain_name }}"
       policy: one_factor
     # Home server apps (tunneled via Xray)
-{% if home_domain is defined %}
-    - domain: "*.{{ home_domain }}"
+{% if home_apps is defined %}
+{% for app in home_apps %}
+    - domain: "{{ app.subdomain }}.{{ home_domain }}"
       policy: one_factor
+{% endfor %}
 {% endif %}
     # Remnawave: bypass API endpoints to allow Remnawave's own auth
     - domain: "panel.{{ domain_name }}"
