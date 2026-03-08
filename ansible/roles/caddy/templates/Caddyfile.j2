@@ -91,6 +91,17 @@ wishlist.{{ domain_name }} {
     reverse_proxy 127.0.0.1:{{ wishlist_port }}
 }
 
+# Home server apps (tunneled via Xray reverse proxy)
+{% if domain_name != "YOUR_DOMAIN_OR_IP" and home_domain is defined %}
+*.{{ home_domain }} {
+    forward_auth 127.0.0.1:{{ authelia_port }} {
+        uri /api/authz/forward-auth
+        copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
+    }
+    reverse_proxy 127.0.0.1:{{ xray_portal_listen_port | default(8888) }}
+}
+{% endif %}
+
 # Main domain - serve personal website
 {% if domain_name != "YOUR_DOMAIN_OR_IP" %}
 {{ domain_name }} {

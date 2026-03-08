@@ -1,0 +1,5 @@
+---
+- name: restart xray-bridge
+  community.docker.docker_compose_v2:
+    project_src: "{{ xray_bridge_dir }}"
+    state: restarted

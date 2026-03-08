@@ -1,0 +1,23 @@
+services:
+  xray-bridge:
+    image: ghcr.io/xtls/xray-core:latest
+    container_name: xray-bridge
+    restart: unless-stopped
+    network_mode: host
+    command: ["run", "-config", "/etc/xray/config.json"]
+    volumes:
+      - ./xray-config.json:/etc/xray/config.json:ro
+
+  caddy-home:
+    image: caddy:2-alpine
+    container_name: caddy-home
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

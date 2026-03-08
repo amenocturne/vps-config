@@ -1,0 +1,45 @@
+---
+- name: Install Docker prerequisites
+  apt:
+    name:
+      - docker.io
+      - docker-compose-v2
+    state: present
+
+- name: Start and enable Docker
+  systemd:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Create xray-bridge directory
+  file:
+    path: "{{ xray_bridge_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Deploy Xray bridge config
+  template:
+    src: xray-config.json.j2
+    dest: "{{ xray_bridge_dir }}/xray-config.json"
+    mode: '0644'
+  notify: restart xray-bridge
+
+- name: Deploy local Caddyfile
+  template:
+    src: Caddyfile.j2
+    dest: "{{ xray_bridge_dir }}/Caddyfile"
+    mode: '0644'
+  notify: restart xray-bridge
+
+- name: Deploy docker-compose
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ xray_bridge_dir }}/docker-compose.yml"
+    mode: '0644'
+  notify: restart xray-bridge
+
+- name: Start xray-bridge and caddy
+  community.docker.docker_compose_v2:
+    project_src: "{{ xray_bridge_dir }}"
+    state: present

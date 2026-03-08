@@ -1,0 +1,10 @@
+---
+xray_bridge_dir: "/opt/xray-bridge"
+xray_bridge_caddy_dir: "/opt/caddy-home"
+xray_bridge_domain: "tunnel.internal"
+xray_bridge_local_caddy_port: 8080
+
+# home_apps:
+#   - name: dwayne
+#     subdomain: dwayne
+#     port: 3000

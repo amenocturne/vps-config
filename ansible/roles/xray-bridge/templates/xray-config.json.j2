@@ -1,0 +1,63 @@
+{
+  "reverse": {
+    "bridges": [
+      {
+        "tag": "bridge",
+        "domain": "{{ xray_bridge_domain }}"
+      }
+    ]
+  },
+  "outbounds": [
+    {
+      "tag": "tunnel",
+      "protocol": "freedom",
+      "settings": {
+        "redirect": "127.0.0.1:{{ xray_bridge_local_caddy_port }}"
+      }
+    },
+    {
+      "tag": "interconn",
+      "protocol": "vless",
+      "settings": {
+        "vnext": [
+          {
+            "address": "{{ xray_portal_host }}",
+            "port": {{ xray_portal_interconnect_port }},
+            "users": [
+              {
+                "id": "{{ xray_tunnel_uuid }}",
+                "flow": "xtls-rprx-vision",
+                "encryption": "none"
+              }
+            ]
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "tcp",
+        "security": "reality",
+        "realitySettings": {
+          "serverName": "www.microsoft.com",
+          "publicKey": "{{ xray_tunnel_public_key }}",
+          "shortId": "{{ xray_tunnel_short_id }}",
+          "fingerprint": "chrome"
+        }
+      }
+    }
+  ],
+  "routing": {
+    "rules": [
+      {
+        "type": "field",
+        "inboundTag": ["bridge"],
+        "domain": ["full:{{ xray_bridge_domain }}"],
+        "outboundTag": "interconn"
+      },
+      {
+        "type": "field",
+        "inboundTag": ["bridge"],
+        "outboundTag": "tunnel"
+      }
+    ]
+  }
+}

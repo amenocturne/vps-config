@@ -1,0 +1,5 @@
+---
+- name: restart xray-portal
+  community.docker.docker_compose_v2:
+    project_src: "{{ xray_portal_dir }}"
+    state: restarted

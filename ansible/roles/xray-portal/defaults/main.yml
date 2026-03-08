@@ -1,0 +1,5 @@
+---
+xray_portal_dir: "/opt/xray-portal"
+xray_portal_interconnect_port: 9443
+xray_portal_listen_port: 8888
+xray_portal_domain: "tunnel.internal"
