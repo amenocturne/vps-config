@@ -226,3 +226,13 @@ extract-node-certs:
 diagnose-vpn:
     @echo "🔍 Diagnosing VPN connectivity..."
     ./scripts/diagnose-vpn-connectivity.sh
+
+# Remnawave Config Management
+
+# Export current Remnawave panel state to state.yml
+export-remnawave-config:
+    uv run export-config
+
+# Sync Remnawave panel state to match state.yml (pass --apply to execute, default is --plan)
+sync-remnawave-config *ARGS:
+    uv run sync-config {{ARGS}}

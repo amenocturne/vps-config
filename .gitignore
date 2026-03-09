@@ -104,3 +104,12 @@ ansible/inventories/**/certs/
 ansible/inventories/**/certificates/
 !**/*_example.pem
 !**/*_template.pem
+
+# Remnawave config state (may contain sensitive config)
+remnawave-config/state.yml
+
+# Symlink for Python import resolution (remnawave-config -> remnawave_config)
+remnawave_config
+
+# Build artifacts
+dist/

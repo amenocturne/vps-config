@@ -3,18 +3,23 @@ name = "vps-config"
 version = "0.1.0"
 description = "Personal VPS configuration with Ansible"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.11"
 dependencies = [
     "ansible>=6.0.0",
     "pyyaml>=6.0",
     "jinja2>=3.0.0",
     "requests>=2.28.0",
+    "httpx>=0.27.0",
+    "pydantic>=2.0.0",
+    "remnawave>=2.6.3",
 ]
 
 [project.scripts]
 test-local = "scripts.test_local:main"
 validate = "scripts.validate:main"
 health-check = "scripts.utilities.health_check:main"
+export-config = "remnawave_config.export:main"
+sync-config = "remnawave_config.sync:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -24,4 +29,7 @@ build-backend = "hatchling.build"
 dev-dependencies = []
 
 [tool.hatch.build.targets.wheel]
-packages = ["scripts"]
+# remnawave_config is a symlink to remnawave-config/ on disk, needed because
+# hatch can't remap hyphenated dirs to underscored packages in editable mode
+packages = ["scripts", "remnawave_config"]
+exclude = ["remnawave_config/state.yml"]
