@@ -46,7 +46,7 @@ all:
         remnawave_node_vless_port: 443          # VLESS + WebSocket (Cloudflare CDN)
         remnawave_node_reality_port: 8443       # VLESS + Reality (backup)
         remnawave_node_shadowsocks_port: 8388   # Shadowsocks (optional)
-        remnawave_node_enable_shadowsocks: false
+        remnawave_node_enable_shadowsocks: true
 
         # Node Directories
         remnawave_node_directory: "/opt/remnanode"
@@ -57,10 +57,9 @@ all:
         vless_ws_path: "/api/v2/ws"
 
         # Reality Configuration (Backup - Direct Connection)
-        reality_dest: "www.speedtest.net:443"
+        reality_dest: "search.brave.com:443"
         reality_server_names:
-          - "www.speedtest.net"
-          - "speedtest.net"
+          - "search.brave.com"
 
         # System Configuration
         system_timezone: "UTC"

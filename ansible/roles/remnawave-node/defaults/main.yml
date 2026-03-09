@@ -7,7 +7,7 @@ remnawave_node_certs_directory: "/opt/remnanode/certs"
 
 # VPN Protocol ports
 remnawave_node_vless_port: 443  # VLESS + WebSocket (via Cloudflare CDN)
-remnawave_node_shadowsocks_port: 1234
+remnawave_node_shadowsocks_port: 8388
 remnawave_node_reality_port: 8443  # VLESS + Reality (direct, backup)
 
 # VLESS + WebSocket configuration
@@ -15,10 +15,9 @@ vless_ws_path: "/api/v2/ws"  # WebSocket path (non-obvious)
 vless_ws_domain: "static.{{ domain_name }}"  # Cloudflare CDN domain
 
 # Reality configuration (ASN-safe destination)
-reality_dest: "www.speedtest.net:443"  # ASN-neutral destination
+reality_dest: "search.brave.com:443"  # ASN-neutral destination
 reality_server_names:
-  - "www.speedtest.net"
-  - "speedtest.net"
+  - "search.brave.com"
 
 # SECRET_KEY (must be obtained from Remnawave Panel)
 # This MUST be set in inventory secrets file (ansible/inventories/.secrets.yml)

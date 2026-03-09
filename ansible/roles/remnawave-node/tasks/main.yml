@@ -227,7 +227,7 @@
         - Protocol: VLESS + Reality
         - Port: {{ remnawave_node_reality_port }}
         - Destination: {{ reality_dest }}
-        - Purpose: Direct connection, masquerades as speedtest.net
+        - Purpose: Direct connection, masquerades as {{ reality_dest | regex_replace(':\\d+$', '') }}
 
       ================================================================================
       CLOUDFLARE SETUP (If not done yet):
@@ -271,7 +271,7 @@
          - Network: TCP
          - Security: Reality
          - Destination: {{ reality_dest }}
-         - Server Names: www.speedtest.net, speedtest.net
+         - Server Names: {{ reality_server_names | join(', ') }}
          {% if reality_private_key is defined and reality_private_key | length > 0 %}
          - Private Key: {{ reality_private_key }}
          - Short IDs: ["", "{{ reality_short_id }}"]
