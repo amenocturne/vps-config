@@ -14,71 +14,47 @@ This is an Ansible-based VPS configuration project that sets up a personal serve
 
 ## Common Commands
 
-All commands should be run from the project root directory.
+All commands should be run from the project root directory. Run `just` or `vps` with no args for a status dashboard.
 
-### Development & Testing Commands
 ```bash
-# Install dependencies
-uv sync
+# Status dashboard (secrets, connectivity)
+vps
 
-# Run validation tests (fast - skips Docker pulls)
-just validate
-# or: uv run validate
+# First-time setup (inventory + secrets)
+vps setup
 
-# Run full validation including Docker image pulls  
-just validate-full
-# or: uv run validate
+# Deploy (interactive target picker if no target given)
+vps deploy              # shows picker
+vps deploy vps          # main server
+vps deploy remnawave    # panel server
+vps deploy nodes        # all VPN nodes
+vps deploy caddy        # single role
+vps deploy --dry-run    # check mode
 
-# Test configuration locally with Docker
-just test-local
-# or: uv run test-local
+# Check everything (secrets, syntax, connectivity, services)
+vps doctor
+vps doctor --secrets       # individual checks
+vps doctor --connectivity
 
-# Clean up local test environment
-just test-clean
+# Server operations
+vps server logs grafana          # docker logs
+vps server restart prometheus    # docker restart
+vps server ssh "uptime"          # run command
+vps server ssh --on remnawave    # on specific target
+vps server test                  # local Docker testing
+vps server test --clean          # cleanup
+
+# Remnawave panel config
+vps panel export           # export state to state.yml
+vps panel sync --plan      # show what would change
+vps panel sync --apply     # apply changes
+
+# Secrets management
+vps secrets check
+vps secrets init
 ```
 
-### Deployment Commands
-```bash
-# Setup production inventory file (copy template)
-just setup
-
-# Check Ansible syntax
-just check
-# or: uv run deploy production check
-
-# Test deployment without making changes
-just dry-run
-# or: uv run deploy production plan
-
-# Deploy to VPS
-just deploy
-# or: uv run deploy production apply
-
-# Deploy with verbose Ansible output
-just deploy-verbose
-```
-
-### Management Commands
-```bash
-# Test VPS connectivity
-just ping
-
-# Run comprehensive health checks
-just health-check
-# or: uv run health-check production
-
-# Restart specific service (e.g., grafana, prometheus)
-just restart grafana
-
-# View service logs (e.g., prometheus, loki)
-just logs prometheus
-
-# Quick VPS connection test
-just ssh
-
-# Clean temporary files
-just clean
-```
+All commands are also available via `just`: `just deploy`, `just doctor`, `just server logs grafana`, etc.
 
 ## Architecture
 
@@ -145,10 +121,9 @@ All scripts are written in Python and use the uv package manager for dependency 
 - `scripts/deployment/deploy.py`: Ansible deployment wrapper with syntax checking, dry-run, and deployment
 - `scripts/utilities/health_check.py`: Infrastructure health checks for connectivity, resources, services, and monitoring endpoints
 
-All scripts provide colored output, detailed error reporting, and can be run via uv entry points:
+The main CLI entry point is `vps` (or `uv run vps`). Legacy entry points still work:
 - `uv run validate` - Run validation tests
 - `uv run test-local` - Run local testing
-- `uv run deploy <environment> <action>` - Deploy with Ansible (actions: check, plan, apply, cleanup)
 - `uv run health-check <environment>` - Run health checks
 - `uv run secrets init|check|distribute` - Secrets management
 

@@ -1,7 +1,7 @@
 # VPS Configuration Management
 
 default:
-    @uv run vps --help
+    @uv run vps
 
 setup:
     uv run vps setup
@@ -9,17 +9,14 @@ setup:
 deploy *ARGS:
     uv run vps deploy {{ARGS}}
 
-logs *ARGS:
-    uv run vps logs {{ARGS}}
+doctor *ARGS:
+    uv run vps doctor {{ARGS}}
 
-restart *ARGS:
-    uv run vps restart {{ARGS}}
+server *ARGS:
+    uv run vps server {{ARGS}}
 
-ssh *ARGS:
-    uv run vps ssh {{ARGS}}
+panel *ARGS:
+    uv run vps panel {{ARGS}}
 
-ping *ARGS:
-    uv run vps ping {{ARGS}}
-
-validate *ARGS:
-    uv run vps validate {{ARGS}}
+secrets *ARGS:
+    uv run vps secrets {{ARGS}}
