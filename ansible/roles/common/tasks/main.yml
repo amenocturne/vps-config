@@ -1,4 +1,9 @@
 ---
+- name: Set hostname
+  hostname:
+    name: "{{ server_hostname }}"
+  when: server_hostname is defined
+
 - name: Update apt cache
   apt:
     update_cache: yes
