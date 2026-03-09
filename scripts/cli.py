@@ -547,6 +547,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     # server
     server_p = sub.add_parser("server", help="Server operations")
+    server_p.set_defaults(_parser=server_p)
     server_sub = server_p.add_subparsers(dest="server_command", metavar="<command>")
 
     s_logs = server_sub.add_parser("logs", help="View docker logs")
@@ -566,6 +567,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     # panel
     panel_p = sub.add_parser("panel", help="Remnawave panel config")
+    panel_p.set_defaults(_parser=panel_p)
     panel_sub = panel_p.add_subparsers(dest="panel_command", metavar="<command>")
 
     panel_sub.add_parser("export", help="Export panel state to state.yml")
@@ -614,9 +616,8 @@ def main() -> None:
 
 def _dispatch_server(args: argparse.Namespace) -> int:
     if not args.server_command:
-        print("Usage: vps server {logs,restart,ssh,test}")
-        print(f"\n{DIM}Run 'vps server --help' for details.{RESET}")
-        return 1
+        args._parser.print_help()
+        return 0
     return {
         "logs": cmd_server_logs,
         "restart": cmd_server_restart,
@@ -627,9 +628,8 @@ def _dispatch_server(args: argparse.Namespace) -> int:
 
 def _dispatch_panel(args: argparse.Namespace) -> int:
     if not args.panel_command:
-        print("Usage: vps panel {export,sync}")
-        print(f"\n{DIM}Run 'vps panel --help' for details.{RESET}")
-        return 1
+        args._parser.print_help()
+        return 0
     return {
         "export": cmd_panel_export,
         "sync": cmd_panel_sync,
