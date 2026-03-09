@@ -1,0 +1,8 @@
+# Clash Verge Rev — Merge Enhancement
+# Applied to the active remote profile as a "merge" chain.
+
+profile:
+  store-selected: true
+
+dns:
+  use-system-hosts: false

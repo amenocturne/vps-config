@@ -1,0 +1,21 @@
+# Clash Verge Rev — Rules Enhancement (prepend)
+# Applied to the active remote profile as a "rules" chain.
+#
+# To apply: copy contents to the rules enhancement in Clash Verge
+# (Profiles tab > rules icon on active profile)
+#
+# After any config reload, verify mode is "rule" not "global":
+#   curl -s --unix-socket /tmp/verge/verge-mihomo.sock http://localhost/configs \
+#     | python3 -c "import sys,json; print(json.load(sys.stdin)['mode'])"
+
+prepend:
+  # VPS — direct to avoid double VPN hop (Mac → VPN → VPS becomes Mac → VPS)
+  - IP-CIDR,168.100.11.130/32,DIRECT
+  # LAN — bypass TUN for local network access (via SOCKS proxy in SSH config)
+  - IP-CIDR,192.168.0.0/24,DIRECT
+  - IP-CIDR,10.0.0.0/8,DIRECT
+  - IP-CIDR,172.16.0.0/12,DIRECT
+
+append: []
+
+delete: []
