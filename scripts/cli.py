@@ -518,7 +518,7 @@ def _build_parser() -> argparse.ArgumentParser:
         description="VPS configuration management",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    sub = parser.add_subparsers(dest="command")
+    sub = parser.add_subparsers(dest="command", metavar="<command>")
 
     # setup
     sub.add_parser("setup", help="First-time secrets + inventory setup")
@@ -539,7 +539,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     # server
     server_p = sub.add_parser("server", help="Server operations")
-    server_sub = server_p.add_subparsers(dest="server_command")
+    server_sub = server_p.add_subparsers(dest="server_command", metavar="<command>")
 
     s_logs = server_sub.add_parser("logs", help="View docker logs")
     s_logs.add_argument("service", help="Service name")
@@ -558,7 +558,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     # panel
     panel_p = sub.add_parser("panel", help="Remnawave panel config")
-    panel_sub = panel_p.add_subparsers(dest="panel_command")
+    panel_sub = panel_p.add_subparsers(dest="panel_command", metavar="<command>")
 
     panel_sub.add_parser("export", help="Export panel state to state.yml")
 
