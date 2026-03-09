@@ -16,6 +16,13 @@
     mode: '0644'
   notify: restart radicale
 
+- name: Deploy radicale users file
+  template:
+    src: users.j2
+    dest: "{{ radicale_dir }}/config/users"
+    mode: '0644'
+  notify: restart radicale
+
 - name: Deploy radicale docker-compose
   template:
     src: docker-compose.yml.j2

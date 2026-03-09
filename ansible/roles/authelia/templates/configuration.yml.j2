@@ -53,8 +53,13 @@ access_control:
     # Home server apps (tunneled via Xray)
 {% if home_apps is defined %}
 {% for app in home_apps %}
+{% if app.auth_required | default(true) %}
     - domain: "{{ app.subdomain }}.{{ home_domain }}"
       policy: one_factor
+{% else %}
+    - domain: "{{ app.subdomain }}.{{ home_domain }}"
+      policy: bypass
+{% endif %}
 {% endfor %}
 {% endif %}
     # Remnawave: bypass API endpoints to allow Remnawave's own auth
