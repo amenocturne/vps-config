@@ -1,22 +1,13 @@
 # VPS Configuration Management
+# Usage: just <command> [args] — passes everything to `uv run vps`
 
-default:
-    @uv run vps
+default *ARGS:
+    @uv run vps {{ARGS}}
 
-setup:
-    uv run vps setup
-
-deploy *ARGS:
-    uv run vps deploy {{ARGS}}
-
-doctor *ARGS:
-    uv run vps doctor {{ARGS}}
-
-server *ARGS:
-    uv run vps server {{ARGS}}
-
-panel *ARGS:
-    uv run vps panel {{ARGS}}
-
-secrets *ARGS:
-    uv run vps secrets {{ARGS}}
+# Aliases for direct `just <command>` usage
+setup *ARGS: (default "setup" ARGS)
+deploy *ARGS: (default "deploy" ARGS)
+doctor *ARGS: (default "doctor" ARGS)
+server *ARGS: (default "server" ARGS)
+panel *ARGS: (default "panel" ARGS)
+secrets *ARGS: (default "secrets" ARGS)
