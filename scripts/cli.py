@@ -383,7 +383,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
             try:
                 r = subprocess.run(
                     ["ansible", "vps", "-i", "inventories/production.yml", "-m", "shell", "-a",
-                     "docker ps --format '{{.Names}}: {{.Status}}' | head -10"],
+                     "docker ps -a --format 'table {% raw %}{{.Names}}\t{{.Status}}{% endraw %}' | tail -n +2 | head -10"],
                     cwd=ansible_dir,
                     capture_output=True,
                     text=True,
@@ -392,8 +392,16 @@ def cmd_doctor(args: argparse.Namespace) -> int:
                 ok = r.returncode == 0
                 mark = f"{GREEN}✓{RESET}" if ok else f"{RED}✗{RESET}"
                 if ok:
-                    lines = [l for l in r.stdout.strip().split("\n") if "Up" in l]
-                    detail = f"{len(lines)} container(s) running"
+                    lines = [l.strip() for l in r.stdout.strip().split("\n") if l.strip()]
+                    # Filter to actual container lines (skip ansible preamble)
+                    running = [l for l in lines if "Up" in l]
+                    stopped = [l for l in lines if "Exited" in l]
+                    parts = []
+                    if running:
+                        parts.append(f"{len(running)} running")
+                    if stopped:
+                        parts.append(f"{YELLOW}{len(stopped)} stopped{RESET}")
+                    detail = ", ".join(parts) if parts else "no containers"
                 else:
                     detail = "could not check"
             except subprocess.TimeoutExpired:
