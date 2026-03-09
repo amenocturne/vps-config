@@ -1,8 +1,18 @@
 # Clash Verge Rev — Merge Enhancement
 # Applied to the active remote profile as a "merge" chain.
+#
+# The "mode: rule" setting is critical — without it, Clash defaults
+# to "global" mode which ignores ALL rules (including DIRECT rules
+# for LAN and VPS), breaking SSH and local network access.
+
+mode: rule
 
 profile:
   store-selected: true
 
 dns:
   use-system-hosts: false
+
+tun:
+  route-exclude-address:
+    - 192.168.0.0/24
