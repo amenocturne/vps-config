@@ -267,13 +267,9 @@ SCHEMA = [
 
 
 def find_project_root() -> Path:
-    """Walk up from CWD to find the project root (contains pyproject.toml)."""
-    current = Path.cwd()
-    for parent in [current, *current.parents]:
-        if (parent / "pyproject.toml").exists():
-            return parent
-    print("Error: could not find project root (no pyproject.toml found)", file=sys.stderr)
-    sys.exit(1)
+    from scripts import find_project_root as _find
+
+    return _find()
 
 
 def secrets_path() -> Path:
