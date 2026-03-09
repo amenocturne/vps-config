@@ -5,7 +5,9 @@
 {% for app in home_apps %}
     @{{ app.name }} host {{ app.subdomain }}.{{ home_domain }}
     handle @{{ app.name }} {
-        reverse_proxy 127.0.0.1:{{ app.port }}
+        reverse_proxy 127.0.0.1:{{ app.port }} {
+            header_up X-Remote-User {header.Remote-User}
+        }
     }
 
 {% endfor %}

@@ -1,0 +1,29 @@
+---
+- name: Create radicale directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ radicale_dir }}"
+    - "{{ radicale_dir }}/config"
+    - "{{ radicale_dir }}/data"
+
+- name: Deploy radicale config
+  template:
+    src: config.j2
+    dest: "{{ radicale_dir }}/config/config"
+    mode: '0644'
+  notify: restart radicale
+
+- name: Deploy radicale docker-compose
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ radicale_dir }}/docker-compose.yml"
+    mode: '0644'
+  notify: restart radicale
+
+- name: Start radicale
+  community.docker.docker_compose_v2:
+    project_src: "{{ radicale_dir }}"
+    state: present

@@ -1,0 +1,9 @@
+services:
+  radicale:
+    image: {{ radicale_image }}
+    container_name: radicale
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - {{ radicale_dir }}/config:/config:ro
+      - {{ radicale_dir }}/data:/data

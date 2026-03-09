@@ -1,0 +1,4 @@
+---
+radicale_dir: "/opt/radicale"
+radicale_port: 5232
+radicale_image: "tomsquest/docker-radicale:latest"
