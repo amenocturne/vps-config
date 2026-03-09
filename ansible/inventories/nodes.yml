@@ -12,13 +12,7 @@ all:
           node_name: "Netherlands"
           vless_ws_domain: "nl1.rutube.dad"
 
-        # Second node
-        node-2:
-          ansible_host: 162.33.177.182
-          node_name: "US"
-          vless_ws_domain: "us1.rutube.dad"
-
-        # node-3:
+        # node-2:
         #   ansible_host: YOUR_THIRD_NODE_IP
         #   node_name: "Singapore Node"
         #   vless_ws_domain: "sg1.rutube.dad"
