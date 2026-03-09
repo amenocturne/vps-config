@@ -1,0 +1,4 @@
+---
+briefing_dir: "/opt/briefing"
+briefing_image: "holtwick/briefing:latest"
+briefing_port: 8084

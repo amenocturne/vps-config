@@ -1,0 +1,39 @@
+---
+- name: Create coturn directory
+  file:
+    path: "{{ coturn_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Deploy turnserver config
+  template:
+    src: turnserver.conf.j2
+    dest: "{{ coturn_dir }}/turnserver.conf"
+    mode: '0644'
+  notify: restart coturn
+
+- name: Deploy coturn docker-compose
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ coturn_dir }}/docker-compose.yml"
+    mode: '0644'
+  notify: restart coturn
+
+- name: Allow STUN/TURN port
+  ufw:
+    rule: allow
+    port: "{{ coturn_port }}"
+    proto: any
+    comment: "STUN/TURN"
+
+- name: Allow TURN relay UDP range
+  ufw:
+    rule: allow
+    port: "{{ coturn_min_port }}:{{ coturn_max_port }}"
+    proto: udp
+    comment: "TURN relay"
+
+- name: Start coturn
+  community.docker.docker_compose_v2:
+    project_src: "{{ coturn_dir }}"
+    state: present

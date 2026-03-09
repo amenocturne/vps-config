@@ -1,0 +1,13 @@
+services:
+  briefing:
+    image: {{ briefing_image }}
+    container_name: briefing
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      BRIEFING_STUN_URL: "stun:{{ ansible_host }}:{{ coturn_port }}"
+      BRIEFING_TURN_URL: "turn:{{ ansible_host }}:{{ coturn_port }}"
+      BRIEFING_TURN_USER: "{{ coturn_user }}"
+      BRIEFING_TURN_PASSWORD: "{{ coturn_password }}"
+      BRIEFING_ROOM_URL: "https://call.{{ domain_name }}/"
+      PORT: "{{ briefing_port }}"

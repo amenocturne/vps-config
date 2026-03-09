@@ -1,0 +1,14 @@
+listening-port={{ coturn_port }}
+fingerprint
+lt-cred-mech
+user={{ coturn_user }}:{{ coturn_password }}
+realm={{ coturn_realm }}
+server-name={{ coturn_realm }}
+min-port={{ coturn_min_port }}
+max-port={{ coturn_max_port }}
+total-quota=100
+stale-nonce=600
+no-multicast-peers
+no-tlsv1
+no-tlsv1_1
+log-file=stdout

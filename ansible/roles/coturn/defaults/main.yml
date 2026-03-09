@@ -1,0 +1,7 @@
+---
+coturn_dir: "/opt/coturn"
+coturn_image: "coturn/coturn:4-alpine"
+coturn_port: 3478
+coturn_min_port: 49160
+coturn_max_port: 49260
+coturn_realm: "turn.{{ domain_name }}"
