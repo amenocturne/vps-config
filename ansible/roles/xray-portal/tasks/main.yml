@@ -30,3 +30,10 @@
     port: "{{ xray_portal_interconnect_port }}"
     proto: tcp
     comment: "Xray tunnel interconnect"
+
+- name: Allow SSH tunnel port
+  ufw:
+    rule: allow
+    port: "{{ xray_portal_ssh_port }}"
+    proto: tcp
+    comment: "SSH tunnel to home server"

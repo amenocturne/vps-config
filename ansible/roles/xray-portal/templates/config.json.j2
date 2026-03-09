@@ -15,7 +15,18 @@
       "protocol": "dokodemo-door",
       "settings": {
         "address": "127.0.0.1",
-        "port": 80,
+        "port": {{ xray_portal_tunnel_http_dest | default(8080) }},
+        "network": "tcp"
+      }
+    },
+    {
+      "tag": "ssh-external",
+      "port": {{ xray_portal_ssh_port }},
+      "listen": "0.0.0.0",
+      "protocol": "dokodemo-door",
+      "settings": {
+        "address": "127.0.0.1",
+        "port": 22,
         "network": "tcp"
       }
     },
@@ -49,7 +60,7 @@
     "rules": [
       {
         "type": "field",
-        "inboundTag": ["external"],
+        "inboundTag": ["external", "ssh-external"],
         "outboundTag": "portal"
       },
       {
