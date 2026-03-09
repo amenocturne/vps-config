@@ -15,6 +15,7 @@ dependencies = [
 ]
 
 [project.scripts]
+vps = "scripts.cli:main"
 test-local = "scripts.test_local:main"
 validate = "scripts.validate:main"
 health-check = "scripts.utilities.health_check:main"
