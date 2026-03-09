@@ -7,7 +7,7 @@
   hosts: remnawave_nodes
   become: true
   vars_files:
-    - "{{ playbook_dir }}/../inventories/remnawave-test/.secrets.yml"
+    - "{{ playbook_dir }}/../../secrets.yml"
   pre_tasks:
     - name: Set node-specific secret key
       set_fact:

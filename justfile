@@ -24,18 +24,17 @@ test-clean:
     @echo "🧹 Cleaning up test environment..."
     cd docker/test-environment && docker-compose down --remove-orphans -v
 
-# Setup inventory file (copy and customize)
+# Initial project setup -- configure secrets and inventory
 setup:
-    @echo "⚙️ Setting up inventory file..."
     @if [ ! -f ansible/inventories/production.yml ]; then \
         cp ansible/inventories/hosts.yml ansible/inventories/production.yml; \
-        echo "✅ Created production.yml - please customize with your VPS IP and domain"; \
-    else \
-        echo "⚠️  production.yml already exists"; \
+        echo "Created production.yml -- customize with your VPS IP and domain"; \
     fi
+    @just secrets-setup
 
 # Deploy all services to VPS
 deploy:
+    @just secrets-distribute
     @echo "🚀 Deploying to VPS..."
     cd ansible && ansible-playbook playbooks/site.yml -i inventories/production.yml
 
@@ -118,10 +117,29 @@ ssh command="uptime":
 @authelia-hash password:
   docker run --rm authelia/authelia:latest authelia crypto hash generate --password '{{password}}'
 
+# Secrets Management
+
+# Generate or update secrets.yml from schema
+secrets-init:
+    uv run secrets init
+
+# Validate all secrets are present
+secrets-check:
+    uv run secrets check
+
+# Push secrets to consumer locations
+secrets-distribute:
+    uv run secrets distribute
+
+# Interactive secrets setup -- prompts for missing secrets per feature
+secrets-setup:
+    uv run secrets setup
+
 # Remnawave VPN Server Commands
 
 # Deploy Remnawave to VPN server
 deploy-remnawave:
+    @just secrets-distribute
     @echo "🚀 Deploying Remnawave to VPN server..."
     cd ansible && ansible-playbook playbooks/remnawave.yml -i inventories/remnawave-test.yml
 
@@ -169,6 +187,7 @@ ssh-remnawave command="uptime":
 
 # Deploy all VPN nodes
 deploy-nodes:
+    @just secrets-distribute
     @echo "🚀 Deploying all VPN nodes..."
     cd ansible && ansible-playbook playbooks/node.yml -i inventories/nodes.yml
 

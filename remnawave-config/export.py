@@ -13,11 +13,10 @@ import sys
 import yaml
 
 from .client import (
-    PANEL_URL,
     create_client,
     fetch_panel_state,
     get_state_output_path,
-    load_api_token,
+    load_config,
 )
 from .models import PanelState
 
@@ -36,11 +35,12 @@ def serialize_state(state: PanelState) -> str:
 
 
 async def export_state() -> None:
-    token = load_api_token()
+    config = load_config()
+    panel_url = config["panel_url"]
 
-    print(f"Connecting to {PANEL_URL}...")
+    print(f"Connecting to {panel_url}...")
 
-    async with create_client(token) as client:
+    async with create_client(config["api_token"], panel_url) as client:
         try:
             state = await fetch_panel_state(client)
         except Exception as e:

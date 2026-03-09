@@ -20,6 +20,7 @@ validate = "scripts.validate:main"
 health-check = "scripts.utilities.health_check:main"
 export-config = "remnawave_config.export:main"
 sync-config = "remnawave_config.sync:main"
+secrets = "scripts.secrets:main"
 
 [build-system]
 requires = ["hatchling"]

@@ -112,8 +112,11 @@ just clean
 - `ansible/group_vars/all.yml`: Global variables and service configuration
 - `ansible/roles/caddy/templates/Caddyfile.j2`: Add reverse proxy rules for your applications
 
+### For Secrets
+- `secrets.yml`: Single source of truth for all secrets (gitignored, generate with `just secrets-init`)
+- `scripts/secrets.py`: Schema definition and management commands (`init`, `check`, `distribute`)
+
 ### For Authentication Configuration
-- `ansible/inventories/production/.env`: Authelia secrets and configuration (create from `.env.example`)
 - `ansible/roles/authelia/templates/configuration.yml.j2`: Authelia main configuration
 - `ansible/roles/authelia/templates/users_database.yml.j2`: User accounts and groups
 
@@ -147,6 +150,7 @@ All scripts provide colored output, detailed error reporting, and can be run via
 - `uv run test-local` - Run local testing
 - `uv run deploy <environment> <action>` - Deploy with Ansible (actions: check, plan, apply, cleanup)
 - `uv run health-check <environment>` - Run health checks
+- `uv run secrets init|check|distribute` - Secrets management
 
 ## Service Access
 
@@ -170,4 +174,4 @@ After deployment, services are available at:
 **Configuration locations:**
 - Port configurations: `ansible/group_vars/all.yml`
 - Domain configurations: `ansible/roles/caddy/templates/Caddyfile.j2`
-- Authentication settings: `ansible/inventories/production/.env`
+- Secrets: `secrets.yml` (root, gitignored)

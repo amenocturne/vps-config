@@ -3,7 +3,7 @@
   hosts: vps
   become: true
   vars_files:
-    - "{{ inventory_dir }}/tunnel-secrets.yml"
+    - "{{ playbook_dir }}/../../secrets.yml"
   roles:
     - { role: common, tags: ['common'] }
     - { role: security, tags: ['security'] }

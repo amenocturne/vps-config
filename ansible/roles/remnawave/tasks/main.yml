@@ -170,18 +170,6 @@
       
       The panel will use secure TLS connections to all nodes on port 2222.
 
-- name: Check if secrets file exists
-  stat:
-    path: "{{ inventory_dir }}/.secrets.yml"
-  register: secrets_file
-  delegate_to: localhost
-  become: false
-
-- name: Load persistent secrets from inventory
-  include_vars:
-    file: "{{ inventory_dir }}/.secrets.yml"
-  when: secrets_file.stat.exists
-
 - name: Deploy .env configuration file
   template:
     src: env.j2

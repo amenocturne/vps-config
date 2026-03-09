@@ -25,8 +25,6 @@ from .models import (
     UserState,
 )
 
-PANEL_URL = "https://panel.amenocturne.space"
-
 
 def find_project_root() -> Path:
     """Walk up from CWD to find the project root (contains pyproject.toml)."""
@@ -39,20 +37,22 @@ def find_project_root() -> Path:
 
 
 def get_secrets_path() -> Path:
-    return find_project_root() / "ansible/inventories/remnawave-test/.secrets.yml"
+    return find_project_root() / "secrets.yml"
 
 
 def get_state_output_path() -> Path:
     return find_project_root() / "remnawave-config/state.yml"
 
 
-def load_api_token() -> str:
-    secrets_path = get_secrets_path()
-    if not secrets_path.exists():
-        print(f"Error: secrets file not found at {secrets_path}", file=sys.stderr)
+def load_config() -> dict[str, str]:
+    """Load panel_url and api_token from the root secrets.yml."""
+    path = get_secrets_path()
+    if not path.exists():
+        print(f"Error: secrets file not found at {path}", file=sys.stderr)
+        print("Run 'just secrets-init' to generate it.", file=sys.stderr)
         sys.exit(1)
 
-    with open(secrets_path) as f:
+    with open(path) as f:
         secrets = yaml.safe_load(f)
 
     token = secrets.get("remnawave_api_token")
@@ -60,12 +60,18 @@ def load_api_token() -> str:
         print("Error: 'remnawave_api_token' not found in secrets file", file=sys.stderr)
         sys.exit(1)
 
-    return str(token)
+    panel_url = secrets.get("remnawave_panel_url", "https://panel.amenocturne.space")
+    if not panel_url:
+        print("Error: 'remnawave_panel_url' not found in secrets file", file=sys.stderr)
+        sys.exit(1)
+
+    return {"panel_url": str(panel_url), "api_token": str(token)}
 
 
-def create_client(token: str) -> httpx.AsyncClient:
-    """Create an httpx.AsyncClient with bearer auth configured."""
+def create_client(token: str, panel_url: str) -> httpx.AsyncClient:
+    """Create an httpx.AsyncClient with bearer auth and base_url configured."""
     return httpx.AsyncClient(
+        base_url=f"{panel_url}/api",
         headers={"Authorization": f"Bearer {token}"},
         timeout=30.0,
     )
@@ -73,7 +79,7 @@ def create_client(token: str) -> httpx.AsyncClient:
 
 async def api_get(client: httpx.AsyncClient, endpoint: str) -> Any:
     """Fetch from the panel API, extracting the response payload."""
-    resp = await client.get(f"{PANEL_URL}/api{endpoint}")
+    resp = await client.get(endpoint)
     resp.raise_for_status()
     data = resp.json()
     return data.get("response", data)
@@ -81,7 +87,7 @@ async def api_get(client: httpx.AsyncClient, endpoint: str) -> Any:
 
 async def api_post(client: httpx.AsyncClient, endpoint: str, payload: dict) -> Any:
     """POST to the panel API."""
-    resp = await client.post(f"{PANEL_URL}/api{endpoint}", json=payload)
+    resp = await client.post(endpoint, json=payload)
     resp.raise_for_status()
     data = resp.json()
     return data.get("response", data)
@@ -89,7 +95,7 @@ async def api_post(client: httpx.AsyncClient, endpoint: str, payload: dict) -> A
 
 async def api_patch(client: httpx.AsyncClient, endpoint: str, payload: dict) -> Any:
     """PATCH the panel API."""
-    resp = await client.patch(f"{PANEL_URL}/api{endpoint}", json=payload)
+    resp = await client.patch(endpoint, json=payload)
     resp.raise_for_status()
     data = resp.json()
     return data.get("response", data)
@@ -97,7 +103,7 @@ async def api_patch(client: httpx.AsyncClient, endpoint: str, payload: dict) -> 
 
 async def api_delete(client: httpx.AsyncClient, endpoint: str) -> Any:
     """DELETE from the panel API."""
-    resp = await client.delete(f"{PANEL_URL}/api{endpoint}")
+    resp = await client.delete(endpoint)
     resp.raise_for_status()
     data = resp.json()
     return data.get("response", data)

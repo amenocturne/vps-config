@@ -1,3 +1,6 @@
+# Project secrets (single source of truth)
+/secrets.yml
+
 # Terraform
 **/.terraform/
 *.tfstate

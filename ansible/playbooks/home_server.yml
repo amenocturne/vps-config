@@ -5,7 +5,7 @@
   hosts: home_server
   become: true
   vars_files:
-    - "{{ inventory_dir }}/tunnel-secrets.yml"
+    - "{{ playbook_dir }}/../../secrets.yml"
   roles:
     - apt-mirror
     - macbook-console

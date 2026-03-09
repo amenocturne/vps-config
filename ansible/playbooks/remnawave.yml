@@ -3,7 +3,7 @@
   hosts: remnawave
   become: true
   vars_files:
-    - "{{ inventory_dir }}/.secrets.yml"
+    - "{{ playbook_dir }}/../../secrets.yml"
   roles:
     - { role: common, tags: ['common'] }
     - { role: security, tags: ['security'] }

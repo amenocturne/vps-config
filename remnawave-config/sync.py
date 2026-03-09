@@ -16,13 +16,12 @@ from pathlib import Path
 from typing import Any
 
 from .client import (
-    PANEL_URL,
     api_delete,
     api_patch,
     api_post,
     create_client,
     fetch_panel_state,
-    load_api_token,
+    load_config,
 )
 from .models import PanelState, load_state_file
 
@@ -628,10 +627,11 @@ async def _run(args: argparse.Namespace) -> int:
     desired = load_state_file(state_path)
 
     # Fetch current panel state via httpx
-    token = load_api_token()
+    config = load_config()
+    panel_url = config["panel_url"]
 
-    print(dim(f"Fetching current panel state from {PANEL_URL}"))
-    async with create_client(token) as client:
+    print(dim(f"Fetching current panel state from {panel_url}"))
+    async with create_client(config["api_token"], panel_url) as client:
         try:
             current = await fetch_panel_state(client)
         except Exception as exc:
