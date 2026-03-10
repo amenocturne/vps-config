@@ -6,13 +6,8 @@ remnawave_node_log_directory: "/var/lib/remnanode"
 remnawave_node_certs_directory: "/opt/remnanode/certs"
 
 # VPN Protocol ports
-remnawave_node_vless_port: 443  # VLESS + WebSocket (via Cloudflare CDN)
+remnawave_node_reality_port: 443    # VLESS + Reality (primary)
 remnawave_node_shadowsocks_port: 8388
-remnawave_node_reality_port: 8443  # VLESS + Reality (direct, backup)
-
-# VLESS + WebSocket configuration
-vless_ws_path: "/api/v2/ws"  # WebSocket path (non-obvious)
-vless_ws_domain: "static.{{ domain_name }}"  # Cloudflare CDN domain
 
 # Reality configuration (ASN-safe destination)
 reality_dest: "search.brave.com:443"  # ASN-neutral destination

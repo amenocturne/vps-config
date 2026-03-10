@@ -140,13 +140,6 @@
     comment: "Remnawave panel API - must be accessible from panel server"
   when: ansible_os_family == "Debian"
 
-- name: Configure firewall - Allow VLESS protocol (port 443)
-  ufw:
-    rule: allow
-    port: "{{ remnawave_node_vless_port }}"
-    proto: tcp
-  when: ansible_os_family == "Debian"
-
 - name: Configure firewall - Allow Shadowsocks protocol (optional)
   ufw:
     rule: allow
@@ -156,20 +149,12 @@
     - ansible_os_family == "Debian"
     - remnawave_node_enable_shadowsocks | default(false)
 
-- name: Configure firewall - Allow Reality destination port (8443)
+- name: Configure firewall - Allow VLESS Reality port
   ufw:
     rule: allow
     port: "{{ remnawave_node_reality_port }}"
     proto: tcp
-    comment: "VLESS Reality backup"
-  when: ansible_os_family == "Debian"
-
-- name: Configure firewall - Allow HTTP/3 (QUIC) for VLESS
-  ufw:
-    rule: allow
-    port: "{{ remnawave_node_vless_port }}"
-    proto: udp
-    comment: "VLESS HTTP/3 support"
+    comment: "VLESS Reality primary"
   when: ansible_os_family == "Debian"
 
 - name: Install logrotate if not present
@@ -215,105 +200,14 @@
       NETWORK CONFIGURATION:
       ----------------------
       Node Communication Port: {{ remnawave_node_app_port }}
-      
-      PRIMARY (Cloudflare CDN - Whitelist Bypass):
-        - Protocol: VLESS + WebSocket + TLS
-        - Domain: {{ vless_ws_domain }}
-        - Port: {{ remnawave_node_vless_port }}
-        - Path: {{ vless_ws_path }}
-        - Purpose: Routes through Cloudflare IPs (whitelisted)
-      
-      BACKUP (Reality - SNI/DPI Bypass):
-        - Protocol: VLESS + Reality
+
+      VLESS + Reality:
         - Port: {{ remnawave_node_reality_port }}
         - Destination: {{ reality_dest }}
-        - Purpose: Direct connection, masquerades as {{ reality_dest | regex_replace(':\\d+$', '') }}
+        - Server Names: {{ reality_server_names | join(', ') }}
 
-      ================================================================================
-      CLOUDFLARE SETUP (If not done yet):
-      ================================================================================
-      
-      1. Add DNS Record in Cloudflare:
-         - Type: A
-         - Name: static (creates {{ vless_ws_domain }})
-         - IPv4: {{ ansible_host }}
-         - Proxy: ☁️ ENABLED (orange cloud - CRITICAL!)
-      
-      2. SSL/TLS Settings:
-         - Mode: Full (strict)
-         - Always Use HTTPS: ON
-      
-      3. Network Settings:
-         - WebSocket: ON (REQUIRED!)
-         - gRPC: ON
-      
-      See docs/remnawave-vpn-setup.md for detailed instructions.
-
-      ================================================================================
-      CONFIGURE INBOUNDS IN PANEL:
-      ================================================================================
-
-      Access panel: https://{{ remnawave_frontend_domain }}
-
-      1. Create VLESS + WebSocket Inbound:
-         - Tag: vless-ws-cloudflare
-         - Protocol: VLESS
-         - Port: {{ remnawave_node_vless_port }}
-         - Network: WebSocket
-         - Path: {{ vless_ws_path }}
-         - Host: {{ vless_ws_domain }}
-         - TLS: Enabled
-
-      2. Update/Create Reality Inbound:
-         - Tag: vless-reality-backup
-         - Protocol: VLESS
-         - Port: {{ remnawave_node_reality_port }}
-         - Network: TCP
-         - Security: Reality
-         - Destination: {{ reality_dest }}
-         - Server Names: {{ reality_server_names | join(', ') }}
-         {% if reality_private_key is defined and reality_private_key | length > 0 %}
-         - Private Key: {{ reality_private_key }}
-         - Short IDs: ["", "{{ reality_short_id }}"]
-         {% else %}
-         - Private Key: ⚠️  NOT SET - Generate with: docker run --rm teddysun/xray:latest xray x25519
-         - See: docs/reality-keys-explained.md
-         {% endif %}
-
-      ================================================================================
-      NODE CONNECTIVITY STATUS:
-      ================================================================================
       {% if node_health_check is defined and node_health_check.status is defined %}
       ✅ Node is responding on port {{ remnawave_node_app_port }} (Status: {{ node_health_check.status }})
       {% else %}
       ⚠️  Node connectivity check was skipped or failed
       {% endif %}
-
-      IMPORTANT FOR PANEL CONNECTIVITY:
-      ----------------------------------
-      The panel must be able to reach this node at:
-        https://{{ ansible_host }}:{{ remnawave_node_app_port }}
-      
-      The panel uses SECURE TLS connections and needs this node's certificate.
-      Certificate extraction happens automatically during panel deployment.
-
-      ================================================================================
-      VERIFICATION COMMANDS:
-      ================================================================================
-
-      # Check node is running
-      docker ps | grep remnanode
-      
-      # Extract node's SSL certificate (for manual setup)
-      echo "" | openssl s_client -connect 127.0.0.1:{{ remnawave_node_app_port }} -showcerts 2>/dev/null | openssl x509 -outform PEM
-
-      # View logs
-      docker logs remnanode -f
-
-      # Verify ports are listening
-      ss -tlnp | grep -E '{{ remnawave_node_vless_port }}|{{ remnawave_node_reality_port }}'
-
-      # Test Cloudflare DNS (should show Cloudflare IP, NOT {{ ansible_host }})
-      dig {{ vless_ws_domain }}
-
-      ================================================================================

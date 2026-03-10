@@ -10,7 +10,6 @@ all:
         node-1:
           ansible_host: 64.111.92.2
           node_name: "Netherlands"
-          vless_ws_domain: "nl1.rutube.dad"
 
         # Second node (shared server with Outline, x-ui, syncthing)
         # Deploy with: vps deploy nodes --limit node-2
@@ -18,10 +17,8 @@ all:
         node-2:
           ansible_host: 193.149.129.84
           node_name: "Netherlands 2"
-          vless_ws_domain: "nl2.rutube.dad"
           ansible_python_interpreter: /usr/bin/python3.10
           # Port overrides — 443 taken by x-ui/xray, 8443 by syncthing discovery
-          remnawave_node_vless_port: 2083
           remnawave_node_reality_port: 9443
 
       vars:
@@ -50,8 +47,7 @@ all:
         remnawave_node_app_port: 2222
 
         # VPN Protocol Ports
-        remnawave_node_vless_port: 443          # VLESS + WebSocket (Cloudflare CDN)
-        remnawave_node_reality_port: 8443       # VLESS + Reality (backup)
+        remnawave_node_reality_port: 443        # VLESS + Reality (primary)
         remnawave_node_shadowsocks_port: 8388   # Shadowsocks (optional)
         remnawave_node_enable_shadowsocks: true
 
@@ -60,10 +56,7 @@ all:
         remnawave_node_log_directory: "/var/lib/remnanode"
         remnawave_node_certs_directory: "/opt/remnanode/certs"
 
-        # VLESS + WebSocket Configuration
-        vless_ws_path: "/api/v2/ws"
-
-        # Reality Configuration (Backup - Direct Connection)
+        # Reality Configuration
         reality_dest: "search.brave.com:443"
         reality_server_names:
           - "search.brave.com"

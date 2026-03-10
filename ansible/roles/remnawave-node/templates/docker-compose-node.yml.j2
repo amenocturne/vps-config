@@ -14,5 +14,5 @@ services:
       - SECRET_KEY={{ remnawave_node_secret_key }}
     volumes:
       - '{{ remnawave_node_log_directory }}:{{ remnawave_node_log_directory }}'
-      # SSL/TLS certificates for VLESS + WebSocket
+      # SSL/TLS certificates for node API
       - '{{ remnawave_node_certs_directory }}:/etc/xray/certs:ro'
