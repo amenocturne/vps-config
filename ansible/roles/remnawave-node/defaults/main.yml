@@ -7,6 +7,7 @@ remnawave_node_certs_directory: "/opt/remnanode/certs"
 
 # VPN Protocol ports
 remnawave_node_reality_port: 443    # VLESS + Reality (primary)
+remnawave_node_ws_port: 8443        # VLESS + WebSocket + TLS (via Cloudflare CDN)
 remnawave_node_shadowsocks_port: 8388
 
 # Reality configuration (ASN-safe destination)

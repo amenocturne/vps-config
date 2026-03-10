@@ -18,8 +18,9 @@ all:
           ansible_host: 193.149.129.84
           node_name: "Netherlands 2"
           ansible_python_interpreter: /usr/bin/python3.10
-          # Port overrides — 443 taken by x-ui/xray, 8443 by syncthing discovery
+          # Port overrides — 443 & 8443 taken by x-ui/xray & syncthing
           remnawave_node_reality_port: 9443
+          remnawave_node_ws_port: 2083
 
       vars:
         # SSH Configuration (same for all nodes)
@@ -48,6 +49,7 @@ all:
 
         # VPN Protocol Ports
         remnawave_node_reality_port: 443        # VLESS + Reality (primary)
+        remnawave_node_ws_port: 8443            # VLESS + WebSocket + TLS (Cloudflare CDN)
         remnawave_node_shadowsocks_port: 8388   # Shadowsocks (optional)
         remnawave_node_enable_shadowsocks: true
 

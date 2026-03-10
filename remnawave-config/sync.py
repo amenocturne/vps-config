@@ -23,7 +23,7 @@ from .client import (
     fetch_panel_state,
     load_config,
 )
-from .models import PanelState, load_state_file
+from .models import HostState, NodeState, PanelState, load_state_file
 
 # ---------------------------------------------------------------------------
 # ANSI helpers
@@ -330,8 +330,16 @@ async def _apply_config_profiles(
     client: Any,
     diffs: list[ResourceDiff],
     desired_state: PanelState,
-) -> list[str]:
+) -> tuple[list[str], dict[str, str]]:
+    """Apply config profile changes. Returns (errors, uuid_remap).
+
+    The Remnawave API has no PATCH endpoint for config profiles, so updates
+    are performed as delete → create. This changes UUIDs, so a remapping dict
+    is returned: {old_uuid → new_uuid} for both profile and inbound UUIDs.
+    Callers must remap host/node references before applying them.
+    """
     errors: list[str] = []
+    uuid_remap: dict[str, str] = {}
     desired_by_uuid = {p.uuid: _to_dict(p) for p in desired_state.config_profiles}
 
     for diff in diffs:
@@ -346,12 +354,29 @@ async def _apply_config_profiles(
 
             elif diff.action == "update":
                 d = desired_by_uuid.get(diff.uuid, {})
-                await api_patch(client, f"/config-profiles/{diff.uuid}", {
-                    "uuid": diff.uuid,
-                    "name": d.get("name"),
-                    "config": d.get("config"),
+                old_inbounds = d.get("inbounds", [])
+
+                # Delete old profile (API has no PATCH for config profiles)
+                await api_delete(client, f"/config-profiles/{diff.uuid}")
+
+                # Recreate with desired config
+                result = await api_post(client, "/config-profiles", {
+                    "name": d.get("name", diff.name),
+                    "config": d.get("config", {}),
                 })
-                print(green(f'  [ok] Updated config profile "{diff.name}"'))
+
+                # Build UUID remapping: old → new
+                new_profile_uuid = result["uuid"]
+                uuid_remap[diff.uuid] = new_profile_uuid
+
+                new_inbounds = result.get("inbounds", [])
+                for new_inb in new_inbounds:
+                    for old_inb in old_inbounds:
+                        if old_inb.get("tag") == new_inb["tag"]:
+                            uuid_remap[old_inb["uuid"]] = new_inb["uuid"]
+                            break
+
+                print(green(f'  [ok] Updated config profile "{diff.name}" (delete + recreate)'))
 
             elif diff.action == "delete":
                 await api_delete(client, f"/config-profiles/{diff.uuid}")
@@ -362,7 +387,17 @@ async def _apply_config_profiles(
             errors.append(msg)
             print(red(f"  [err] {msg}"))
 
-    return errors
+    return errors, uuid_remap
+
+
+def _build_inbound_tag_map(desired_state: PanelState) -> dict[str, str]:
+    """Build a mapping of inbound tag → inbound UUID from all config profiles."""
+    tag_map: dict[str, str] = {}
+    for p in desired_state.config_profiles:
+        d = _to_dict(p)
+        for inb in d.get("inbounds", []):
+            tag_map[inb["tag"]] = inb["uuid"]
+    return tag_map
 
 
 async def _apply_nodes(
@@ -372,6 +407,7 @@ async def _apply_nodes(
 ) -> list[str]:
     errors: list[str] = []
     desired_by_uuid = {n.uuid: _to_dict(n) for n in desired_state.nodes}
+    tag_to_uuid = _build_inbound_tag_map(desired_state)
 
     for diff in diffs:
         try:
@@ -382,7 +418,6 @@ async def _apply_nodes(
                     "address": d["address"],
                     "port": d.get("port"),
                     "countryCode": d.get("country_code", "XX"),
-                    "isDisabled": d.get("is_disabled", False),
                     "isTrafficTrackingActive": d.get("is_traffic_tracking_active", False),
                     "consumptionMultiplier": d.get("consumption_multiplier", 1.0),
                 })
@@ -390,16 +425,36 @@ async def _apply_nodes(
 
             elif diff.action == "update":
                 d = desired_by_uuid.get(diff.uuid, {})
-                await api_patch(client, f"/nodes/{diff.uuid}", {
+
+                payload: dict[str, Any] = {
                     "uuid": diff.uuid,
                     "name": d.get("name"),
                     "address": d.get("address"),
                     "port": d.get("port"),
                     "countryCode": d.get("country_code"),
-                    "isDisabled": d.get("is_disabled"),
                     "isTrafficTrackingActive": d.get("is_traffic_tracking_active"),
                     "consumptionMultiplier": d.get("consumption_multiplier"),
-                })
+                    "tags": d.get("tags"),
+                }
+
+                # Include config profile assignment if present
+                profile_uuid = d.get("active_config_profile_uuid")
+                inbound_tags = d.get("active_inbound_tags", [])
+                if profile_uuid:
+                    active_inbounds = [tag_to_uuid[t] for t in inbound_tags if t in tag_to_uuid]
+                    payload["configProfile"] = {
+                        "activeConfigProfileUuid": profile_uuid,
+                        "activeInbounds": active_inbounds,
+                    }
+
+                await api_patch(client, "/nodes", payload)
+
+                # Handle enable/disable via dedicated endpoints
+                if d.get("is_disabled") is False:
+                    await api_post(client, f"/nodes/{diff.uuid}/actions/enable", {})
+                elif d.get("is_disabled") is True:
+                    await api_post(client, f"/nodes/{diff.uuid}/actions/disable", {})
+
                 print(green(f'  [ok] Updated node "{diff.name}"'))
 
             elif diff.action == "delete":
@@ -450,7 +505,8 @@ async def _apply_hosts(
             elif diff.action == "update":
                 d = desired_by_uuid.get(diff.uuid, {})
                 inbound = d.get("inbound", {})
-                await api_patch(client, "/hosts", {
+                # Strip None values — API rejects null for optional string fields
+                payload = {
                     "uuid": diff.uuid,
                     "remark": d.get("remark"),
                     "address": d.get("address"),
@@ -468,7 +524,10 @@ async def _apply_hosts(
                         "configProfileInboundUuid": inbound.get("config_profile_inbound_uuid"),
                     },
                     "nodes": d.get("nodes"),
-                })
+                }
+                # Strip None values — API rejects null for optional string fields
+                payload = {k: v for k, v in payload.items() if v is not None}
+                await api_patch(client, "/hosts", payload)
                 print(green(f'  [ok] Updated host "{diff.name}"'))
 
             elif diff.action == "delete":
@@ -538,6 +597,41 @@ async def _apply_users(
     return errors
 
 
+def _remap_desired_state(desired_state: PanelState, uuid_remap: dict[str, str]) -> PanelState:
+    """Return a new PanelState with config profile/inbound UUIDs remapped.
+
+    After a config profile delete+recreate, all UUIDs change. This updates
+    host and node references so subsequent apply steps use the new UUIDs.
+    """
+    if not uuid_remap:
+        return desired_state
+
+    def remap(uuid: str | None) -> str | None:
+        return uuid_remap.get(uuid, uuid) if uuid else uuid
+
+    new_nodes = []
+    for n in desired_state.nodes:
+        d = _to_dict(n)
+        d["active_config_profile_uuid"] = remap(d.get("active_config_profile_uuid"))
+        new_nodes.append(NodeState(**d))
+
+    new_hosts = []
+    for h in desired_state.hosts:
+        d = _to_dict(h)
+        inbound = d.get("inbound") or {}
+        inbound["config_profile_uuid"] = remap(inbound.get("config_profile_uuid"))
+        inbound["config_profile_inbound_uuid"] = remap(inbound.get("config_profile_inbound_uuid"))
+        d["inbound"] = inbound
+        new_hosts.append(HostState(**d))
+
+    return PanelState(
+        config_profiles=desired_state.config_profiles,
+        nodes=new_nodes,
+        hosts=new_hosts,
+        users=desired_state.users,
+    )
+
+
 async def apply_plan(
     client: Any,
     plan: SyncPlan,
@@ -546,9 +640,23 @@ async def apply_plan(
     """Execute the sync plan in dependency order. Returns all errors."""
     all_errors: list[str] = []
 
-    # Order matters: profiles -> nodes -> hosts -> users
+    # 1. Config profiles first (may produce UUID remapping from delete+recreate)
+    profile_diffs = [d for d in plan.config_profiles if d.action != "orphan"]
+    uuid_remap: dict[str, str] = {}
+    if profile_diffs:
+        print(f"\n{bold('Config Profiles')}:")
+        errors, uuid_remap = await _apply_config_profiles(
+            client, profile_diffs, desired_state,
+        )
+        all_errors.extend(errors)
+
+    # Remap UUIDs in desired state if profiles were recreated
+    if uuid_remap:
+        print(f"\n  Remapping {len(uuid_remap)} UUID(s) after profile recreate...")
+        desired_state = _remap_desired_state(desired_state, uuid_remap)
+
+    # 2. Remaining resources in dependency order
     sections: list[tuple[str, list[ResourceDiff], Any]] = [
-        ("Config Profiles", plan.config_profiles, _apply_config_profiles),
         ("Nodes", plan.nodes, _apply_nodes),
         ("Hosts", plan.hosts, _apply_hosts),
         ("Users", plan.users, _apply_users),

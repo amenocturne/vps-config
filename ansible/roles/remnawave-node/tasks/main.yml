@@ -157,6 +157,14 @@
     comment: "VLESS Reality primary"
   when: ansible_os_family == "Debian"
 
+- name: Configure firewall - Allow VLESS WebSocket port
+  ufw:
+    rule: allow
+    port: "{{ remnawave_node_ws_port }}"
+    proto: tcp
+    comment: "VLESS WebSocket via Cloudflare CDN"
+  when: ansible_os_family == "Debian"
+
 - name: Install logrotate if not present
   apt:
     name: logrotate
@@ -201,10 +209,14 @@
       ----------------------
       Node Communication Port: {{ remnawave_node_app_port }}
 
-      VLESS + Reality:
+      VLESS + Reality (primary):
         - Port: {{ remnawave_node_reality_port }}
         - Destination: {{ reality_dest }}
         - Server Names: {{ reality_server_names | join(', ') }}
+
+      VLESS + WebSocket + TLS (fallback):
+        - Port: {{ remnawave_node_ws_port }}
+        - Via Cloudflare CDN
 
       {% if node_health_check is defined and node_health_check.status is defined %}
       ✅ Node is responding on port {{ remnawave_node_app_port }} (Status: {{ node_health_check.status }})
