@@ -103,53 +103,19 @@
     certs_extracted_count: "{{ node_certs_extracted.results | selectattr('stdout', 'defined') | selectattr('stdout') | list | length }}"
   when: node_certs_extracted is defined
 
-- name: Verify node certificates were extracted
+- name: Check if CA bundle already exists on panel server
+  stat:
+    path: "{{ remnawave_directory }}/certs/remnawave-nodes-ca.pem"
+  register: existing_ca_bundle
+
+- name: Verify node certificates are available
   assert:
     that:
-      - node_certs_extracted is defined
-      - certs_extracted_count | default(0) | int > 0
+      - (certs_extracted_count | default(0) | int > 0) or existing_ca_bundle.stat.exists
     fail_msg: |
-      ================================================================================
-      ❌ ERROR: Cannot extract SSL certificates from VPN nodes!
-      ================================================================================
-      
-      The panel REQUIRES valid SSL certificates from all nodes to establish
-      secure TLS connections on port 2222.
-      
-      TROUBLESHOOTING:
-      ----------------
-      1. Ensure nodes are deployed and running:
-         just deploy-nodes
-         just ssh-nodes "docker ps | grep remnanode"
-      
-      2. Verify nodes are listening on port 2222:
-         just ssh-nodes "ss -tlnp | grep :2222"
-      
-      3. Check network connectivity from control machine:
-      {% if node_hosts is defined %}
-      {% for host in node_hosts %}
-         nc -zv {{ host }} 2222
-      {% endfor %}
-      {% endif %}
-      
-      4. Verify firewall allows port 2222:
-         just ssh-nodes "sudo ufw status | grep 2222"
-      
-      5. If nodes are behind NAT/firewall, you may need to:
-         - Temporarily open port 2222 during deployment
-         - Or manually extract certificates and place in inventory
-      
-      MANUAL CERTIFICATE EXTRACTION:
-      -------------------------------
-      Run on each node:
-         openssl s_client -connect 127.0.0.1:2222 -showcerts < /dev/null 2>/dev/null | \
-         openssl x509 > node-X-cert.pem
-      
-      Then combine all certificates:
-         cat node-*-cert.pem > {{ inventory_dir }}/node-ca-bundle.pem
-      
-      And copy to panel manually.
-      ================================================================================
+      No node certificates available — extraction failed and no existing CA bundle found.
+      Extract manually: openssl s_client -connect <node-ip>:2222 -showcerts < /dev/null 2>/dev/null | openssl x509 > node-cert.pem
+      Then copy to {{ remnawave_directory }}/certs/remnawave-nodes-ca.pem
 
 - name: Add certificate volume mount to remnawave service
   blockinfile:

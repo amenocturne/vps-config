@@ -13,6 +13,7 @@
       set_fact:
         remnawave_node_secret_key: "{{ node_secret_keys[inventory_hostname] }}"
       when: node_secret_keys is defined and inventory_hostname in node_secret_keys
+      tags: always
   roles:
     - { role: common, tags: ['common', 'setup'] }
     - { role: security, tags: ['security', 'setup'] }

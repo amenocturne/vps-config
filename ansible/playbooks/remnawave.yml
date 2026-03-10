@@ -10,4 +10,3 @@
     - { role: docker, tags: ['docker'] }
     - { role: remnawave, tags: ['remnawave', 'panel'] }
     - { role: remnawave-subscription-page, tags: ['remnawave-subscription', 'subscription'] }
-    - { role: remnawave-node, tags: ['remnawave-node', 'node', 'vpn'] }
