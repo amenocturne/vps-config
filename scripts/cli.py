@@ -10,6 +10,7 @@ Structure:
   vps doctor             check everything
   vps server             server operations (logs, restart, ssh, test)
   vps remnawave          remnawave panel config (export, sync, add-node)
+  vps certs renew        renew *.rutube.dad wildcard cert via Cloudflare Origin CA
   vps secrets            secrets management (check, init)
 """
 
@@ -431,6 +432,19 @@ def cmd_secrets(args: argparse.Namespace) -> int:
     return 1
 
 
+# -- certs subcommands ----------------------------------------------------
+
+
+def cmd_certs_renew(_args: argparse.Namespace) -> int:
+    from scripts.certs import main as certs_main
+
+    try:
+        certs_main()
+        return 0
+    except SystemExit as e:
+        return e.code if isinstance(e.code, int) else 1
+
+
 # -- server subcommands ---------------------------------------------------
 
 
@@ -615,6 +629,13 @@ def _build_parser() -> argparse.ArgumentParser:
     rw_snapshot = rw_sub.add_parser("snapshot", help="Save Clash configs locally for offline use")
     rw_snapshot.add_argument("--user", default=None, help="Username (default: all 'MY' tagged users)")
 
+    # certs
+    certs_p = sub.add_parser("certs", help="SSL certificate management")
+    certs_p.set_defaults(_parser=certs_p)
+    certs_sub = certs_p.add_subparsers(dest="certs_command", metavar="<command>")
+
+    certs_sub.add_parser("renew", help="Renew *.rutube.dad wildcard cert via Cloudflare Origin CA")
+
     # secrets
     secrets_p = sub.add_parser("secrets", help="Secrets management")
     secrets_p.add_argument("action", nargs="?", choices=["check", "init"], default="check", help="Action (default: check)")
@@ -640,6 +661,7 @@ def main() -> None:
         "doctor": cmd_doctor,
         "server": _dispatch_server,
         "remnawave": _dispatch_remnawave,
+        "certs": _dispatch_certs,
         "secrets": cmd_secrets,
     }
 
@@ -661,6 +683,15 @@ def _dispatch_server(args: argparse.Namespace) -> int:
         "ssh": cmd_server_ssh,
         "test": cmd_server_test,
     }[args.server_command](args)
+
+
+def _dispatch_certs(args: argparse.Namespace) -> int:
+    if not args.certs_command:
+        args._parser.print_help()
+        return 0
+    return {
+        "renew": cmd_certs_renew,
+    }[args.certs_command](args)
 
 
 def _dispatch_remnawave(args: argparse.Namespace) -> int:

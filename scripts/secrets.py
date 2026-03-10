@@ -117,6 +117,13 @@ SCHEMA = [
                 "default": "",
                 "generate": None,
             },
+            {
+                "name": "cloudflare_origin_ca_key",
+                "description": "Cloudflare Origin CA Key for certificate creation (My Profile > API Tokens)",
+                "used_by": ["vps certs renew"],
+                "default": "",
+                "generate": None,
+            },
         ],
     },
     {
