@@ -1,153 +1,124 @@
-# Personal VPS Configuration
+# VPS Config
 
-A complete Ansible-based solution for deploying and managing a personal VPS with monitoring, authentication, and security hardening. This project sets up a production-ready infrastructure with automatic HTTPS, comprehensive monitoring, and secure authentication with 2FA.
+Personal VPS and VPN infrastructure management. Uses Ansible for server provisioning and a Python CLI for day-to-day operations.
 
-## What's Included
+## What It Manages
 
-- **🔒 Authelia**: Authentication and authorization service with 2FA support
-- **🌐 Caddy**: Reverse proxy with automatic HTTPS and Let's Encrypt certificates
-- **🐳 Docker**: Container runtime for all services with proper orchestration
-- **📊 Monitoring Stack**: Prometheus, Grafana, Loki, and Promtail for observability
-- **🛡️ Security**: SSH hardening, firewall rules, fail2ban protection, and unattended upgrades
-- **🧪 Local Testing**: Docker-based testing environment for safe deployments
+- **Main server** (168.100.11.130) -- Caddy reverse proxy, Authelia 2FA, monitoring (Prometheus/Grafana/Loki), personal sites, xray tunnel
+- **Remnawave panel** (64.111.92.2) -- VPN management panel + subscription page
+- **VPN nodes** -- VLESS+WebSocket (via Cloudflare CDN) and VLESS+Reality (direct) on multiple servers
 
-## 📚 Documentation
+## Prerequisites
 
-This project includes comprehensive documentation organized into specialized guides:
+- [just](https://github.com/casey/just) -- `brew install just`
+- [uv](https://docs.astral.sh/uv/) -- `brew install uv`
+- SSH access to target servers
 
-### Getting Started
-- **[Quick Start Guide](docs/quick-start.md)** - Get up and running in minutes
-- **[Installation Guide](docs/installation.md)** - Detailed setup instructions
-- **[Configuration Guide](docs/configuration.md)** - Complete configuration reference
-
-### Architecture & Design
-- **[Architecture Overview](docs/architecture.md)** - System design and component relationships
-- **[Service Documentation](docs/services.md)** - Detailed service configurations and endpoints
-
-### Operations & Management
-- **[Deployment Guide](docs/deployment.md)** - Step-by-step deployment procedures
-- **[Management Guide](docs/management.md)** - Day-to-day operational tasks
-- **[Monitoring Guide](docs/monitoring.md)** - Observability and alerting setup
-
-### Reference & Troubleshooting
-- **[Command Reference](docs/commands.md)** - Complete command documentation
-- **[Troubleshooting Guide](docs/troubleshooting.md)** - Common issues and solutions
-- **[Security Guide](docs/security.md)** - Security best practices and hardening
-
-### Advanced Topics
-- **[Development Guide](docs/development.md)** - Local testing and contribution guidelines
-- **[Customization Guide](docs/customization.md)** - Extending and modifying the setup
-
-### Remnawave VPN
-- **[Remnawave Setup Guide](docs/REMNAWAVE_SETUP.md)** - Complete step-by-step VPN deployment
-- **[Deploying Multiple Nodes](docs/deploying-multiple-nodes.md)** - Add nodes in different locations
-
-## 🚀 Quick Start
-
-### Prerequisites
-- **just**: Task runner (`brew install just` on macOS)
-- **uv**: Python package manager (`brew install uv`)
-- **Docker**: For local testing
-- **SSH access** to your VPS with sudo privileges
-
-### Basic Setup
-```bash
-# 1. Install dependencies
-uv sync
-
-# 2. Validate configuration
-just validate
-
-# 3. Test locally
-just test-local
-
-# 4. Setup production inventory
-just setup
-# Edit ansible/inventories/production.yml with your VPS details
-
-# 5. Configure Authelia secrets (REQUIRED)
-# See docs/configuration.md for detailed steps
-
-# 6. Deploy
-just deploy
-```
-
-## 📖 Key Documentation Links
-
-| Task | Documentation |
-|------|---------------|
-| First-time setup | [Installation Guide](docs/installation.md) |
-| Configure services | [Configuration Guide](docs/configuration.md) |
-| Deploy to production | [Deployment Guide](docs/deployment.md) |
-| Monitor your VPS | [Monitoring Guide](docs/monitoring.md) |
-| Troubleshoot issues | [Troubleshooting Guide](docs/troubleshooting.md) |
-| Add custom services | [Customization Guide](docs/customization.md) |
-
-## 🎯 Common Commands
+## Setup
 
 ```bash
-# Testing & Validation
-just validate           # Quick validation
-just test-local         # Test locally with Docker
+# Install the CLI globally
+just install
 
-# Deployment
-just deploy             # Deploy all services
-just deploy-authelia    # Deploy only authentication
+# First-time setup (creates inventory + secrets)
+vps setup
 
-# Management  
-just health-check       # Check system health
-just restart grafana    # Restart specific service
-just logs prometheus    # View service logs
+# Fill in secrets interactively
+vps secrets init
+
+# Verify everything
+vps doctor
 ```
 
-## 🌐 Service Access
+## Usage
 
-After deployment, services are available at:
+```bash
+# Status dashboard
+vps
 
-- **🔐 Authelia (Auth Portal)**: `https://auth.yourdomain.com`
-- **📊 Grafana (Dashboards)**: `https://grafana.yourdomain.com`
-- **🔍 Prometheus (Metrics)**: `https://prometheus.yourdomain.com`
-- **📝 Loki (Logs)**: `https://loki.yourdomain.com`
+# Deploy
+vps deploy              # interactive target picker
+vps deploy vps          # main server
+vps deploy remnawave    # panel server
+vps deploy nodes        # all VPN nodes
+vps deploy node-2       # single node
+vps deploy caddy        # single role on main server
+vps deploy --dry-run    # check mode
 
-All services except Authelia require authentication through the auth portal.
+# Server operations
+vps server logs grafana
+vps server restart prometheus
+vps server ssh "uptime"
+vps server ssh --on remnawave "docker ps"
 
-## 🏗️ Repository Structure
-
-```
-vps-config/
-├── docs/                    # 📚 Complete documentation
-├── ansible/                 # 🎭 Ansible automation
-│   ├── roles/              # Service-specific configurations
-│   ├── playbooks/          # Deployment orchestration
-│   ├── inventories/        # Environment configurations
-│   └── group_vars/         # Global variables
-├── docker/                 # 🐳 Docker configurations
-│   ├── compose/           # Service definitions
-│   └── test-environment/  # Local testing setup
-├── scripts/                # 🐍 Python automation tools
-├── justfile               # 🔧 Task automation
-└── pyproject.toml         # 📦 Project dependencies
+# Diagnostics
+vps doctor
+vps doctor --secrets
+vps doctor --connectivity
 ```
 
-## 💡 Key Features
+## Remnawave VPN Management
 
-- **Zero-downtime deployments** with health checks
-- **Automatic HTTPS** with Let's Encrypt certificates
-- **2FA authentication** for all services
-- **Comprehensive monitoring** with alerting
-- **Security hardening** by default
-- **Local testing environment** for safe changes
-- **Automated backups** and maintenance
-- **Extensive documentation** and troubleshooting guides
+The `vps remnawave` subcommands manage the VPN panel declaratively.
 
-## 🤝 Contributing
+```bash
+# Export current panel state to state.yml
+vps remnawave export
 
-See the [Development Guide](docs/development.md) for information on:
-- Local development setup
-- Testing procedures
-- Contributing guidelines
-- Code style and conventions
+# Compare state.yml with live panel
+vps remnawave sync --plan
 
-## 📄 License
+# Apply state.yml changes to panel
+vps remnawave sync --apply
 
-This project is open source and available under the MIT License.
+# Save Clash proxy configs for offline use
+vps remnawave snapshot
+vps remnawave snapshot --user alice
+
+# Add a new VPN node (guided workflow)
+vps remnawave add-node --ip 1.2.3.4 --name "Germany" --country DE --domain de1.rutube.dad
+```
+
+### Adding a New Node
+
+1. Run `vps remnawave add-node` with the node's IP, name, country, and domain
+   - Registers the node in the panel
+   - Creates subscription hosts (WS + Reality)
+   - Adds the node to `ansible/inventories/nodes.yml`
+   - Saves the connection key to `secrets.yml`
+2. Deploy with `vps deploy node-N`
+3. For shared servers where default ports are taken, use `--vless-port` and `--reality-port`
+
+## Project Structure
+
+```
+scripts/cli.py                      CLI entry point
+scripts/secrets.py                  Secrets schema and management
+remnawave-config/                   Panel config module
+  export.py                         Export panel state to state.yml
+  sync.py                           Declarative sync (plan/apply)
+  snapshot.py                       Download Clash configs
+  add_node.py                       Guided node provisioning
+  client.py                         API client (httpx)
+  models.py                         Pydantic state models
+ansible/
+  playbooks/site.yml                Main server
+  playbooks/remnawave.yml           Panel server
+  playbooks/node.yml                VPN nodes
+  inventories/nodes.yml             Node inventory
+  inventories/production.yml        Main server inventory
+  roles/                            Ansible roles
+secrets.yml                         All secrets (gitignored)
+justfile                            Task runner aliases
+```
+
+## Secrets
+
+All secrets live in `secrets.yml` (gitignored). Manage with:
+
+```bash
+vps secrets init    # interactive setup
+vps secrets check   # verify all keys present
+```
+
+Key sections: Remnawave Panel (API token, JWT secrets, DB password), VPN Nodes (per-node connection keys, Reality keys), Cloudflare (API token), Xray Tunnel, Radicale, TURN/STUN, Authelia (JWT, session, OIDC secrets).
