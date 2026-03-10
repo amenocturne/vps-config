@@ -45,9 +45,9 @@ vps server test                  # local Docker testing
 vps server test --clean          # cleanup
 
 # Remnawave panel config
-vps panel export           # export state to state.yml
-vps panel sync --plan      # show what would change
-vps panel sync --apply     # apply changes
+vps remnawave export           # export state to state.yml
+vps remnawave sync --plan      # show what would change
+vps remnawave sync --apply     # apply changes
 
 # Secrets management
 vps secrets check

@@ -9,7 +9,7 @@ Structure:
   vps deploy [TARGET]    deploy via Ansible
   vps doctor             check everything
   vps server             server operations (logs, restart, ssh, test)
-  vps panel              remnawave panel config (export, sync)
+  vps remnawave          remnawave panel config (export, sync)
   vps secrets            secrets management (check, init)
 """
 
@@ -484,10 +484,10 @@ def cmd_server_test(args: argparse.Namespace) -> int:
         return e.code if isinstance(e.code, int) else 1
 
 
-# -- panel subcommands ----------------------------------------------------
+# -- remnawave subcommands ------------------------------------------------
 
 
-def cmd_panel_export(_args: argparse.Namespace) -> int:
+def cmd_remnawave_export(_args: argparse.Namespace) -> int:
     from remnawave_config.export import main as export_main
 
     try:
@@ -497,7 +497,7 @@ def cmd_panel_export(_args: argparse.Namespace) -> int:
         return e.code if isinstance(e.code, int) else 1
 
 
-def cmd_panel_sync(args: argparse.Namespace) -> int:
+def cmd_remnawave_sync(args: argparse.Namespace) -> int:
     argv = ["--apply"] if args.mode == "apply" else ["--plan"]
     old_argv = sys.argv
     sys.argv = ["sync-config"] + argv
@@ -562,18 +562,18 @@ def _build_parser() -> argparse.ArgumentParser:
     s_test = server_sub.add_parser("test", help="Local Docker testing")
     s_test.add_argument("--clean", action="store_true", help="Clean up test environment")
 
-    # panel
-    panel_p = sub.add_parser("panel", help="Remnawave panel config")
-    panel_p.set_defaults(_parser=panel_p)
-    panel_sub = panel_p.add_subparsers(dest="panel_command", metavar="<command>")
+    # remnawave
+    rw_p = sub.add_parser("remnawave", help="Remnawave panel config (export, sync)")
+    rw_p.set_defaults(_parser=rw_p)
+    rw_sub = rw_p.add_subparsers(dest="remnawave_command", metavar="<command>")
 
-    panel_sub.add_parser("export", help="Export panel state to state.yml")
+    rw_sub.add_parser("export", help="Export panel state to state.yml")
 
-    p_sync = panel_sub.add_parser("sync", help="Sync state.yml to panel")
-    sync_mode = p_sync.add_mutually_exclusive_group()
+    rw_sync = rw_sub.add_parser("sync", help="Sync state.yml to panel")
+    sync_mode = rw_sync.add_mutually_exclusive_group()
     sync_mode.add_argument("--plan", action="store_const", const="plan", dest="mode", help="Show what would change (default)")
     sync_mode.add_argument("--apply", action="store_const", const="apply", dest="mode", help="Apply changes")
-    p_sync.set_defaults(mode="plan")
+    rw_sync.set_defaults(mode="plan")
 
     # secrets
     secrets_p = sub.add_parser("secrets", help="Secrets management")
@@ -599,7 +599,7 @@ def main() -> None:
         "deploy": cmd_deploy,
         "doctor": cmd_doctor,
         "server": _dispatch_server,
-        "panel": _dispatch_panel,
+        "remnawave": _dispatch_remnawave,
         "secrets": cmd_secrets,
     }
 
@@ -623,14 +623,14 @@ def _dispatch_server(args: argparse.Namespace) -> int:
     }[args.server_command](args)
 
 
-def _dispatch_panel(args: argparse.Namespace) -> int:
-    if not args.panel_command:
+def _dispatch_remnawave(args: argparse.Namespace) -> int:
+    if not args.remnawave_command:
         args._parser.print_help()
         return 0
     return {
-        "export": cmd_panel_export,
-        "sync": cmd_panel_sync,
-    }[args.panel_command](args)
+        "export": cmd_remnawave_export,
+        "sync": cmd_remnawave_sync,
+    }[args.remnawave_command](args)
 
 
 if __name__ == "__main__":
