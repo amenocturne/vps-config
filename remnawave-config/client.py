@@ -65,7 +65,9 @@ def load_config() -> dict[str, str]:
         print("Error: 'remnawave_panel_url' not found in secrets file", file=sys.stderr)
         sys.exit(1)
 
-    return {"panel_url": str(panel_url), "api_token": str(token)}
+    subscription_url = secrets.get("remnawave_subscription_url")
+
+    return {"panel_url": str(panel_url), "api_token": str(token), "subscription_url": str(subscription_url) if subscription_url else None}
 
 
 def create_client(token: str, panel_url: str) -> httpx.AsyncClient:

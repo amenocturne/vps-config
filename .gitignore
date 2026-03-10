@@ -110,6 +110,7 @@ ansible/inventories/**/certificates/
 
 # Remnawave config state (may contain sensitive config)
 remnawave-config/state.yml
+remnawave-config/snapshots/
 
 # Symlink for Python import resolution (remnawave-config -> remnawave_config)
 remnawave_config

@@ -497,6 +497,16 @@ def cmd_remnawave_export(_args: argparse.Namespace) -> int:
         return e.code if isinstance(e.code, int) else 1
 
 
+def cmd_remnawave_snapshot(args: argparse.Namespace) -> int:
+    from remnawave_config.snapshot import main as snapshot_main
+
+    try:
+        snapshot_main(username=args.user)
+        return 0
+    except SystemExit as e:
+        return e.code if isinstance(e.code, int) else 1
+
+
 def cmd_remnawave_sync(args: argparse.Namespace) -> int:
     argv = ["--apply"] if args.mode == "apply" else ["--plan"]
     old_argv = sys.argv
@@ -575,6 +585,9 @@ def _build_parser() -> argparse.ArgumentParser:
     sync_mode.add_argument("--apply", action="store_const", const="apply", dest="mode", help="Apply changes")
     rw_sync.set_defaults(mode="plan")
 
+    rw_snapshot = rw_sub.add_parser("snapshot", help="Save Clash configs locally for offline use")
+    rw_snapshot.add_argument("--user", default=None, help="Username (default: all 'MY' tagged users)")
+
     # secrets
     secrets_p = sub.add_parser("secrets", help="Secrets management")
     secrets_p.add_argument("action", nargs="?", choices=["check", "init"], default="check", help="Action (default: check)")
@@ -630,6 +643,7 @@ def _dispatch_remnawave(args: argparse.Namespace) -> int:
     return {
         "export": cmd_remnawave_export,
         "sync": cmd_remnawave_sync,
+        "snapshot": cmd_remnawave_snapshot,
     }[args.remnawave_command](args)
 
 

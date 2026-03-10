@@ -12,10 +12,17 @@ all:
           node_name: "Netherlands"
           vless_ws_domain: "nl1.rutube.dad"
 
-        # node-2:
-        #   ansible_host: YOUR_THIRD_NODE_IP
-        #   node_name: "Singapore Node"
-        #   vless_ws_domain: "sg1.rutube.dad"
+        # Second node (shared server with Outline, x-ui, syncthing)
+        # Deploy with: vps deploy nodes --limit node-2
+        # IMPORTANT: use --tags node to skip security role (UFW reset would break other services)
+        node-2:
+          ansible_host: 193.149.129.84
+          node_name: "Outline Server"
+          vless_ws_domain: "eu2.rutube.dad"
+          ansible_python_interpreter: /usr/bin/python3.10
+          # Port overrides — 443 taken by x-ui/xray, 8443 by syncthing discovery
+          remnawave_node_vless_port: 2083
+          remnawave_node_reality_port: 9443
 
       vars:
         # SSH Configuration (same for all nodes)
