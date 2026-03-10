@@ -9,7 +9,7 @@ Structure:
   vps deploy [TARGET]    deploy via Ansible
   vps doctor             check everything
   vps server             server operations (logs, restart, ssh, test)
-  vps remnawave          remnawave panel config (export, sync)
+  vps remnawave          remnawave panel config (export, sync, add-node)
   vps secrets            secrets management (check, init)
 """
 
@@ -507,6 +507,24 @@ def cmd_remnawave_snapshot(args: argparse.Namespace) -> int:
         return e.code if isinstance(e.code, int) else 1
 
 
+def cmd_remnawave_add_node(args: argparse.Namespace) -> int:
+    from remnawave_config.add_node import main as add_node_main
+
+    try:
+        add_node_main(
+            ip=args.ip,
+            name=args.name,
+            country=args.country,
+            domain=args.domain,
+            node_id=args.node_id,
+            vless_port=args.vless_port,
+            reality_port=args.reality_port,
+        )
+        return 0
+    except SystemExit as e:
+        return e.code if isinstance(e.code, int) else 1
+
+
 def cmd_remnawave_sync(args: argparse.Namespace) -> int:
     argv = ["--apply"] if args.mode == "apply" else ["--plan"]
     old_argv = sys.argv
@@ -585,6 +603,15 @@ def _build_parser() -> argparse.ArgumentParser:
     sync_mode.add_argument("--apply", action="store_const", const="apply", dest="mode", help="Apply changes")
     rw_sync.set_defaults(mode="plan")
 
+    rw_add = rw_sub.add_parser("add-node", help="Add a new VPN node (guided workflow)")
+    rw_add.add_argument("--ip", required=True, help="Node IP address")
+    rw_add.add_argument("--name", required=True, help="Display name (e.g., 'Netherlands 2')")
+    rw_add.add_argument("--country", required=True, help="Country code (e.g., NL)")
+    rw_add.add_argument("--domain", required=True, help="VLESS WS domain (e.g., nl2.rutube.dad)")
+    rw_add.add_argument("--node-id", default=None, help="Inventory hostname (default: auto node-N)")
+    rw_add.add_argument("--vless-port", type=int, default=443, help="VLESS+WS port (default: 443)")
+    rw_add.add_argument("--reality-port", type=int, default=8443, help="Reality port (default: 8443)")
+
     rw_snapshot = rw_sub.add_parser("snapshot", help="Save Clash configs locally for offline use")
     rw_snapshot.add_argument("--user", default=None, help="Username (default: all 'MY' tagged users)")
 
@@ -644,6 +671,7 @@ def _dispatch_remnawave(args: argparse.Namespace) -> int:
         "export": cmd_remnawave_export,
         "sync": cmd_remnawave_sync,
         "snapshot": cmd_remnawave_snapshot,
+        "add-node": cmd_remnawave_add_node,
     }[args.remnawave_command](args)
 
 

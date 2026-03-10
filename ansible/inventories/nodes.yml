@@ -17,8 +17,8 @@ all:
         # IMPORTANT: use --tags node to skip security role (UFW reset would break other services)
         node-2:
           ansible_host: 193.149.129.84
-          node_name: "Outline Server"
-          vless_ws_domain: "eu2.rutube.dad"
+          node_name: "Netherlands 2"
+          vless_ws_domain: "nl2.rutube.dad"
           ansible_python_interpreter: /usr/bin/python3.10
           # Port overrides — 443 taken by x-ui/xray, 8443 by syncthing discovery
           remnawave_node_vless_port: 2083

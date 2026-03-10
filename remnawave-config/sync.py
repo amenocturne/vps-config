@@ -450,7 +450,7 @@ async def _apply_hosts(
             elif diff.action == "update":
                 d = desired_by_uuid.get(diff.uuid, {})
                 inbound = d.get("inbound", {})
-                await api_patch(client, f"/hosts/{diff.uuid}", {
+                await api_patch(client, "/hosts", {
                     "uuid": diff.uuid,
                     "remark": d.get("remark"),
                     "address": d.get("address"),
