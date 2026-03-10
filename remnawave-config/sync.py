@@ -17,6 +17,7 @@ from typing import Any
 
 from .client import (
     api_delete,
+    api_get,
     api_patch,
     api_post,
     create_client,
@@ -384,6 +385,25 @@ async def _apply_config_profiles(
 
         except Exception as exc:
             msg = f'Config profile "{diff.name}": {exc}'
+            errors.append(msg)
+            print(red(f"  [err] {msg}"))
+
+    # Update internal squads that reference old inbound UUIDs
+    if uuid_remap:
+        try:
+            resp = await api_get(client, "/internal-squads")
+            squads = resp.get("internalSquads", [])
+            for squad in squads:
+                old_inbound_uuids = [inb["uuid"] for inb in squad.get("inbounds", [])]
+                new_inbound_uuids = [uuid_remap.get(u, u) for u in old_inbound_uuids]
+                if old_inbound_uuids != new_inbound_uuids:
+                    await api_patch(client, "/internal-squads", {
+                        "uuid": squad["uuid"],
+                        "inbounds": new_inbound_uuids,
+                    })
+                    print(green(f'  [ok] Updated internal squad "{squad["name"]}" with new inbound UUIDs'))
+        except Exception as exc:
+            msg = f"Internal squads update: {exc}"
             errors.append(msg)
             print(red(f"  [err] {msg}"))
 
