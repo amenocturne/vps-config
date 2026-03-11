@@ -35,7 +35,7 @@ def cmd_status(_args: argparse.Namespace) -> int:
     root = find_project_root()
     ansible_dir = root / "ansible"
 
-    print(f"\n{BOLD}VPS{RESET} {DIM}— use --help to see available commands{RESET}\n")
+    print(f"\n{BOLD}VPS Status{RESET}\n")
 
     configured, total = _secrets_summary()
     if configured == total:

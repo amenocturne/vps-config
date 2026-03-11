@@ -14,12 +14,16 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     sub = parser.add_subparsers(dest="command", metavar="<command>")
 
+    # status
+    sub.add_parser("status", help="Status dashboard (secrets + connectivity)")
+
     # setup
     sub.add_parser("setup", help="First-time secrets + inventory setup")
 
     # deploy
     deploy_p = sub.add_parser("deploy", help="Deploy via Ansible")
-    deploy_p.add_argument("target", nargs="?", default=None, help="Target (interactive picker if omitted)")
+    deploy_p.add_argument("target", nargs="?", default=None, help="Target server (vps, remnawave, nodes, node-N)")
+    deploy_p.add_argument("component", nargs="?", default=None, help="Component to deploy (or 'all' for everything)")
     deploy_p.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
     deploy_p.add_argument("--dry-run", action="store_true", help="Check mode (no changes)")
     deploy_p.add_argument("--check", action="store_true", help="Syntax check only")
@@ -147,10 +151,11 @@ def main() -> None:
     args = parser.parse_args()
 
     if not args.command:
-        from vps_cli.cli.status import cmd_status
-        sys.exit(cmd_status(args))
+        parser.print_help()
+        sys.exit(0)
 
     handlers = {
+        "status": lambda a: __import__("vps_cli.cli.status", fromlist=["cmd_status"]).cmd_status(a),
         "setup": lambda a: __import__("vps_cli.cli.setup", fromlist=["cmd_setup"]).cmd_setup(a),
         "deploy": lambda a: __import__("vps_cli.cli.deploy", fromlist=["cmd_deploy"]).cmd_deploy(a),
         "doctor": lambda a: __import__("vps_cli.cli.doctor", fromlist=["cmd_doctor"]).cmd_doctor(a),

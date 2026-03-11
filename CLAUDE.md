@@ -20,9 +20,9 @@ Domain: `amenocturne.space` (panel at `panel.amenocturne.space`, nodes at `*.rut
 ### Deploy Targets
 
 - `vps` -- site.yml: common, security, docker, authelia, projects, personal-website, wishlist, coturn, briefing, xray-portal, caddy, monitoring
-- `remnawave` -- remnawave.yml: common, security, docker, remnawave, remnawave-subscription-page
+- `remnawave` -- remnawave.yml: common, security, docker, remnawave, remnawave-subscription-page, remnawave-telegram-bot
 - `nodes` -- node.yml: common, security, docker, remnawave-node
-- Role-only targets: `caddy`, `authelia`, `grafana` (deploy single role on vps)
+- Deploy single component: `vps deploy vps caddy`, `vps deploy remnawave telegram-bot`
 - Single node: `vps deploy node-2` (limits to one node)
 
 ## CLI Commands
@@ -30,10 +30,21 @@ Domain: `amenocturne.space` (panel at `panel.amenocturne.space`, nodes at `*.rut
 Entry point: `vps` (installed via `uv tool install -e .` or run with `just vps <args>`)
 
 ```bash
-vps                              # status dashboard (secrets + connectivity)
+vps                              # show help (available commands)
+vps status                       # status dashboard (secrets + connectivity)
 vps setup                        # first-time setup (inventory + secrets)
-vps deploy [TARGET]              # deploy (interactive picker if no target)
-vps deploy --dry-run             # check mode
+
+# Deploy — explicit target + component required
+vps deploy                       # show available targets
+vps deploy remnawave             # show components (panel, subscription, telegram-bot)
+vps deploy remnawave all         # deploy everything on remnawave
+vps deploy remnawave telegram-bot # deploy just the telegram bot
+vps deploy vps caddy             # deploy just caddy on main server
+vps deploy vps all               # deploy everything on main server
+vps deploy nodes                 # deploy all VPN nodes
+vps deploy node-2                # deploy specific node
+vps deploy <target> <comp> --dry-run  # check mode
+
 vps doctor                       # all checks (--secrets, --syntax, --connectivity, --services)
 vps server logs <service>        # docker logs (--on remnawave for other targets)
 vps server restart <service>     # docker restart
@@ -50,6 +61,14 @@ vps remnawave snapshot [--user]  # save Clash configs locally for offline use
 vps remnawave add-node           # guided node provisioning (--ip, --name, --country, --domain)
 vps remnawave gen-keys           # generate Reality keypair (--prefix, --node)
 ```
+
+### Deploy Targets & Components
+
+| Target | Components | Notes |
+|--------|-----------|-------|
+| `vps` | caddy, authelia, monitoring, personal-website, wishlist, coturn, briefing, tunnel, projects | Main server roles |
+| `remnawave` | panel, subscription, telegram-bot | Panel server roles |
+| `nodes` | — | Use `node-N` to limit to one node |
 
 ### Adding a New Node
 

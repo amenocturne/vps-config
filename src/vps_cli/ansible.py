@@ -27,10 +27,24 @@ TARGETS = {
     },
 }
 
-ROLE_TARGETS = {
-    "caddy": ("caddy", "role only (on vps)"),
-    "authelia": ("authelia", "role only (on vps)"),
-    "grafana": ("grafana", "role only (on vps)"),
+# Per-target deployable components (name → ansible tag)
+TARGET_COMPONENTS: dict[str, dict[str, str]] = {
+    "vps": {
+        "caddy": "caddy",
+        "authelia": "authelia",
+        "monitoring": "monitoring",
+        "personal-website": "personal-website",
+        "wishlist": "wishlist",
+        "coturn": "coturn",
+        "briefing": "briefing",
+        "tunnel": "tunnel",
+        "projects": "projects",
+    },
+    "remnawave": {
+        "panel": "remnawave",
+        "subscription": "remnawave-subscription",
+        "telegram-bot": "remnawave-telegram-bot",
+    },
 }
 
 
