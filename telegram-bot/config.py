@@ -12,6 +12,7 @@ BOT_TOKEN: str = _require("BOT_TOKEN")
 REMNAWAVE_API_URL: str = _require("REMNAWAVE_API_URL").rstrip("/")
 REMNAWAVE_API_TOKEN: str = _require("REMNAWAVE_API_TOKEN")
 ADMIN_TELEGRAM_ID: int = int(_require("ADMIN_TELEGRAM_ID"))
+SUBSCRIPTION_BASE_URL: str = _require("SUBSCRIPTION_BASE_URL").rstrip("/")
 
 # Mirrors remnawave.enums.ClientType — update when Remnawave adds new types
 # "raw" is a special type: fetches default sub and base64-decodes to vless:// links

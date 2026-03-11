@@ -14,7 +14,7 @@ from telegram.ext import (
     filters,
 )
 
-from config import BOT_TOKEN, ADMIN_TELEGRAM_ID, CLIENT_TYPES
+from config import BOT_TOKEN, ADMIN_TELEGRAM_ID, CLIENT_TYPES, SUBSCRIPTION_BASE_URL
 import remnawave
 
 def _reply_keyboard(tg_id: int) -> ReplyKeyboardMarkup:
@@ -70,8 +70,11 @@ async def _get_config_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         return
 
     if len(users) == 1:
+        sub_link = f"{SUBSCRIPTION_BASE_URL}/sub/{users[0]['shortUuid']}"
         await update.message.reply_text(
-            "Выбери формат конфига:",
+            f"🔗 Ссылка подписки:\n<code>{sub_link}</code>\n\n"
+            "Или выбери формат конфига:",
+            parse_mode="HTML",
             reply_markup=_client_type_keyboard(users[0]["shortUuid"]),
         )
     else:
@@ -96,9 +99,12 @@ async def _pick_user_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
 
     short_uuid = query.data.removeprefix("pick_user:")
+    sub_link = f"{SUBSCRIPTION_BASE_URL}/sub/{short_uuid}"
     await query.answer()
     await query.message.reply_text(
-        "Выбери формат конфига:",
+        f"🔗 Ссылка подписки:\n<code>{sub_link}</code>\n\n"
+        "Или выбери формат конфига:",
+        parse_mode="HTML",
         reply_markup=_client_type_keyboard(short_uuid),
     )
 

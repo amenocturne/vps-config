@@ -1,3 +1,4 @@
 ---
 telegram_bot_directory: "/opt/remnawave-telegram-bot"
 telegram_bot_image: "python:3.12-slim"
+subscription_base_url: "https://sub.amenocturne.space"
