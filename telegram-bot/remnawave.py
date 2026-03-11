@@ -11,7 +11,11 @@ def _get_client() -> httpx.AsyncClient:
     if _client is None:
         _client = httpx.AsyncClient(
             base_url=REMNAWAVE_API_URL,
-            headers={"Authorization": f"Bearer {REMNAWAVE_API_TOKEN}"},
+            headers={
+                "Authorization": f"Bearer {REMNAWAVE_API_TOKEN}",
+                "X-Forwarded-For": "127.0.0.1",
+                "X-Forwarded-Proto": "https",
+            },
             timeout=15.0,
         )
     return _client
