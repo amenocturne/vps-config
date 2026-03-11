@@ -40,6 +40,7 @@
     project_src: "{{ telegram_bot_directory }}"
     state: present
     build: always
+    recreate: "{{ 'always' if (bot_compose.changed or bot_sources.changed) else 'auto' }}"
 
 - name: Display telegram bot info
   debug:
