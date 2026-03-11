@@ -15,13 +15,7 @@ dependencies = [
 ]
 
 [project.scripts]
-vps = "scripts.cli:main"
-test-local = "scripts.test_local:main"
-validate = "scripts.validate:main"
-health-check = "scripts.utilities.health_check:main"
-export-config = "remnawave_config.export:main"
-sync-config = "remnawave_config.sync:main"
-secrets = "scripts.secrets:main"
+vps = "vps_cli.cli:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -31,7 +25,4 @@ build-backend = "hatchling.build"
 dev = []
 
 [tool.hatch.build.targets.wheel]
-# remnawave_config is a symlink to remnawave-config/ on disk, needed because
-# hatch can't remap hyphenated dirs to underscored packages in editable mode
-packages = ["scripts", "remnawave_config"]
-exclude = ["remnawave_config/state.yml"]
+packages = ["src/vps_cli"]

@@ -115,8 +115,5 @@ ansible/inventories/**/certificates/
 remnawave-config/state.yml
 remnawave-config/snapshots/
 
-# Symlink for Python import resolution (remnawave-config -> remnawave_config)
-remnawave_config
-
 # Build artifacts
 dist/

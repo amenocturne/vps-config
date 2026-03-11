@@ -1,15 +1,7 @@
-"""
-Cloudflare Origin CA certificate creation for *.rutube.dad.
-
-Generates RSA key + CSR locally, then calls the Origin CA API to issue
-a 15-year wildcard certificate.
-"""
-
 from __future__ import annotations
 
 import shutil
 import subprocess
-import sys
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -17,41 +9,30 @@ from pathlib import Path
 import httpx
 import yaml
 
-DIM = "\033[2m"
-BOLD = "\033[1m"
-GREEN = "\033[32m"
-RED = "\033[31m"
-YELLOW = "\033[33m"
-RESET = "\033[0m"
+from vps_cli import find_project_root
+from vps_cli.errors import ApiError, SecretsError, VpsError
+from vps_cli.util import BOLD, DIM, GREEN, RED, RESET, YELLOW, confirm
 
 HOSTNAMES = ["*.rutube.dad", "rutube.dad"]
 VALIDITY_DAYS = 5475  # 15 years
 
 
-def _find_project_root() -> Path:
-    from scripts import find_project_root
-
-    return find_project_root()
-
-
 def _load_secret(key: str) -> str:
-    root = _find_project_root()
+    root = find_project_root()
     path = root / "secrets.yml"
     with open(path) as f:
         data = yaml.safe_load(f) or {}
     value = data.get(key, "")
     if not value:
-        print(f"Error: '{key}' not configured in secrets.yml", file=sys.stderr)
-        print(
-            "Get your Origin CA Key from: Cloudflare Dashboard > My Profile > API Tokens > Origin CA Key",
-            file=sys.stderr,
+        raise SecretsError(
+            f"'{key}' not configured in secrets.yml. "
+            "Get your Origin CA Key from: Cloudflare Dashboard > My Profile > API Tokens > Origin CA Key"
         )
-        sys.exit(1)
     return value
 
 
 def _certs_dir() -> Path:
-    return _find_project_root() / "ansible" / "inventories" / "nodes" / "certs"
+    return find_project_root() / "ansible" / "inventories" / "nodes" / "certs"
 
 
 def _generate_key(key_path: Path) -> None:
@@ -61,8 +42,7 @@ def _generate_key(key_path: Path) -> None:
         text=True,
     )
     if result.returncode != 0:
-        print(f"Error generating private key:\n{result.stderr}", file=sys.stderr)
-        sys.exit(1)
+        raise VpsError(f"Error generating private key:\n{result.stderr}")
 
 
 def _generate_csr(key_path: Path, csr_path: Path) -> str:
@@ -70,24 +50,15 @@ def _generate_csr(key_path: Path, csr_path: Path) -> str:
     san = ",".join(f"DNS:{h}" for h in HOSTNAMES)
     result = subprocess.run(
         [
-            "openssl",
-            "req",
-            "-new",
-            "-key",
-            str(key_path),
-            "-out",
-            str(csr_path),
-            "-subj",
-            subj,
-            "-addext",
-            f"subjectAltName={san}",
+            "openssl", "req", "-new", "-key", str(key_path),
+            "-out", str(csr_path), "-subj", subj,
+            "-addext", f"subjectAltName={san}",
         ],
         capture_output=True,
         text=True,
     )
     if result.returncode != 0:
-        print(f"Error generating CSR:\n{result.stderr}", file=sys.stderr)
-        sys.exit(1)
+        raise VpsError(f"Error generating CSR:\n{result.stderr}")
     return csr_path.read_text()
 
 
@@ -107,8 +78,7 @@ def _request_certificate(csr: str, origin_ca_key: str) -> str:
     data = resp.json()
     if not data.get("success"):
         errors = data.get("errors", [])
-        print(f"Cloudflare API error: {errors}", file=sys.stderr)
-        sys.exit(1)
+        raise ApiError(f"Cloudflare API error: {errors}")
     return data["result"]["certificate"]
 
 
@@ -120,7 +90,6 @@ def _get_cert_expiry(cert_path: Path) -> datetime | None:
     )
     if result.returncode != 0:
         return None
-    # Format: notAfter=Mar 10 12:00:00 2041 GMT
     line = result.stdout.strip()
     if "=" not in line:
         return None
@@ -133,17 +102,11 @@ def _get_cert_expiry(cert_path: Path) -> datetime | None:
         return None
 
 
-def _confirm(message: str) -> bool:
-    raw = input(f"{message} [y/N]: ").strip().lower()
-    return raw in ("y", "yes")
-
-
-def main() -> None:
+def renew_certs() -> None:
     certs = _certs_dir()
     cert_path = certs / "fullchain.pem"
     key_path = certs / "key.pem"
 
-    # Check existing certs
     if cert_path.exists():
         expiry = _get_cert_expiry(cert_path)
         if expiry:
@@ -156,7 +119,7 @@ def main() -> None:
         else:
             print(f"{YELLOW}Existing cert found but could not read expiry{RESET}")
 
-        if not _confirm("Overwrite existing certificates?"):
+        if not confirm("Overwrite existing certificates?"):
             print("Aborted.")
             return
 
@@ -180,15 +143,13 @@ def main() -> None:
         print(f"  {DIM}Requesting certificate from Cloudflare...{RESET}")
         certificate = _request_certificate(csr, origin_ca_key)
 
-        # Back up existing files
         certs.mkdir(parents=True, exist_ok=True)
         for p in (cert_path, key_path):
             if p.exists():
                 bak = p.with_suffix(p.suffix + ".bak")
                 shutil.copy2(p, bak)
-                print(f"  Backed up {p.name} → {bak.name}")
+                print(f"  Backed up {p.name} -> {bak.name}")
 
-        # Write new files
         cert_path.write_text(certificate)
         tmp_key_content = tmp_key.read_text()
         key_path.write_text(tmp_key_content)

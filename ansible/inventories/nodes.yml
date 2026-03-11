@@ -22,6 +22,10 @@ all:
           remnawave_node_reality_port: 9443
           remnawave_node_ws_port: 2083
           remnawave_node_reality2_port: 2087
+          # Outline Shadowbox (Shadowsocks VPN backup)
+          outline_enabled: true
+          outline_api_port: 61779
+          outline_ss_port: 14685
 
       vars:
         # SSH Configuration (same for all nodes)

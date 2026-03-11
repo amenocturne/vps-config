@@ -1,0 +1,94 @@
+---
+# Outline Shadowbox (Shadowsocks VPN) Deployment
+
+- name: Validate Outline API prefix is set
+  assert:
+    that:
+      - outline_api_prefix | length > 0
+    fail_msg: "outline_api_prefix is required (management API path secret)"
+
+- name: Create Outline directory
+  file:
+    path: "{{ outline_directory }}"
+    state: directory
+    mode: '0755'
+
+- name: Create Outline state directory
+  file:
+    path: "{{ outline_state_directory }}"
+    state: directory
+    mode: '0755'
+
+- name: Remove old standalone containers (migrating to compose)
+  community.docker.docker_container:
+    name: "{{ item }}"
+    state: absent
+  loop:
+    - shadowbox
+    - watchtower
+  ignore_errors: true
+
+- name: Deploy Outline docker-compose.yml
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ outline_directory }}/docker-compose.yml"
+    mode: '0644'
+  register: outline_compose
+
+- name: Recreate containers if config changed
+  community.docker.docker_compose_v2:
+    project_src: "{{ outline_directory }}"
+    state: absent
+  when: outline_compose.changed
+  ignore_errors: true
+
+- name: Start Outline services
+  community.docker.docker_compose_v2:
+    project_src: "{{ outline_directory }}"
+    state: present
+    pull: always
+
+- name: Configure firewall - Allow Shadowsocks port (TCP)
+  ufw:
+    rule: allow
+    port: "{{ outline_ss_port }}"
+    proto: tcp
+    comment: "Outline Shadowsocks"
+  when: ansible_os_family == "Debian"
+
+- name: Configure firewall - Allow Shadowsocks port (UDP)
+  ufw:
+    rule: allow
+    port: "{{ outline_ss_port }}"
+    proto: udp
+    comment: "Outline Shadowsocks"
+  when: ansible_os_family == "Debian"
+
+- name: Configure firewall - Allow Outline management API
+  ufw:
+    rule: allow
+    port: "{{ outline_api_port }}"
+    proto: tcp
+    comment: "Outline management API"
+  when: ansible_os_family == "Debian"
+
+- name: Wait for Shadowsocks to start
+  wait_for:
+    port: "{{ outline_ss_port }}"
+    delay: 3
+    timeout: 30
+    msg: "Outline Shadowbox did not start within 30 seconds"
+
+- name: Display Outline status
+  debug:
+    msg: |
+      ================================================================================
+      Outline Shadowbox Deployment Complete
+      ================================================================================
+
+      Directory: {{ outline_directory }}
+      State: {{ outline_state_directory }}
+
+      Shadowsocks Port: {{ outline_ss_port }} (TCP+UDP)
+      Management API: https://{{ ansible_host }}:{{ outline_api_port }}/{{ outline_api_prefix }}
+      Watchtower: {{ 'enabled' if outline_watchtower_enabled else 'disabled' }}

@@ -1,28 +1,16 @@
-"""
-Export current Remnawave panel state to state.yml.
-
-Connects to the panel API, fetches all resources, strips volatile fields,
-and writes a clean YAML snapshot suitable for git-diffing.
-"""
-
 from __future__ import annotations
 
 import asyncio
-import sys
 
 import yaml
 
-from .client import (
-    create_client,
-    fetch_panel_state,
-    get_state_output_path,
-    load_config,
-)
+from vps_cli.errors import ApiError
+
+from .client import create_client, fetch_panel_state, get_state_output_path, load_config
 from .models import PanelState
 
 
 def serialize_state(state: PanelState) -> str:
-    """Serialize state to YAML with stable, human-readable output."""
     raw = state.model_dump(mode="json")
 
     return yaml.dump(
@@ -44,8 +32,7 @@ async def export_state() -> None:
         try:
             state = await fetch_panel_state(client)
         except Exception as e:
-            print(f"Failed to fetch panel state: {e}", file=sys.stderr)
-            sys.exit(1)
+            raise ApiError(f"Failed to fetch panel state: {e}") from e
 
     output = serialize_state(state)
     output_path = get_state_output_path()
@@ -58,7 +45,3 @@ async def export_state() -> None:
 
 def main():
     asyncio.run(export_state())
-
-
-if __name__ == "__main__":
-    main()

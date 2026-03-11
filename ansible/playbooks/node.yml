@@ -19,3 +19,6 @@
     - { role: security, tags: ['security', 'setup'] }
     - { role: docker, tags: ['docker', 'setup'] }
     - { role: remnawave-node, tags: ['node', 'vpn'] }
+    - role: outline-shadowbox
+      tags: ['outline']
+      when: outline_enabled | default(false)

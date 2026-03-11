@@ -1,22 +1,11 @@
-"""
-Centralized secrets management for the VPS config project.
-
-The SCHEMA below is the single source of truth for all secret keys.
-Commands: init, check, distribute.
-"""
-
 from __future__ import annotations
 
-import argparse
-import sys
 from pathlib import Path
 
 import yaml
 
-
-# ---------------------------------------------------------------------------
-# Schema definition — every secret key, grouped by feature
-# ---------------------------------------------------------------------------
+from vps_cli import find_project_root
+from vps_cli.util import confirm
 
 SCHEMA = [
     {
@@ -71,6 +60,13 @@ SCHEMA = [
                 "default": "",
                 "generate": "openssl rand -hex 10",
             },
+            {
+                "name": "remnawave_subscription_url",
+                "description": "Subscription page URL for fetching user configs",
+                "used_by": ["vps remnawave snapshot"],
+                "default": "https://sub.amenocturne.space",
+                "generate": None,
+            },
         ],
     },
     {
@@ -104,6 +100,18 @@ SCHEMA = [
                 "used_by": ["remnawave playbook", "node playbook"],
                 "default": "",
                 "generate": "openssl rand -hex 8",
+            },
+        ],
+    },
+    {
+        "section": "Outline Shadowbox",
+        "keys": [
+            {
+                "name": "outline_api_prefix",
+                "description": "Management API path secret (from access.txt on server)",
+                "used_by": ["node playbook"],
+                "default": "",
+                "generate": None,
             },
         ],
     },
@@ -268,23 +276,11 @@ SCHEMA = [
 ]
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def find_project_root() -> Path:
-    from scripts import find_project_root as _find
-
-    return _find()
-
-
 def secrets_path() -> Path:
     return find_project_root() / "secrets.yml"
 
 
 def all_keys() -> list[dict]:
-    """Flatten all keys from all sections."""
     return [key for section in SCHEMA for key in section["keys"]]
 
 
@@ -296,13 +292,7 @@ def section_for_key(key_name: str) -> str | None:
     return None
 
 
-# ---------------------------------------------------------------------------
-# Init command
-# ---------------------------------------------------------------------------
-
-
-def _render_secrets_yml(existing: dict | None = None) -> str:
-    """Build the full secrets.yml content as a string with comments."""
+def _render_secrets_yml(existing: dict | None = None) -> tuple[str, list[str]]:
     lines = [
         "---",
         "# Project secrets -- single source of truth",
@@ -328,7 +318,6 @@ def _render_secrets_yml(existing: dict | None = None) -> str:
             name = key["name"]
             is_dict = key.get("type") == "dict"
 
-            # Use existing value if present, otherwise use schema default
             if existing and name in existing:
                 value = existing[name]
             else:
@@ -342,7 +331,7 @@ def _render_secrets_yml(existing: dict | None = None) -> str:
                     for k, v in value.items():
                         lines.append(f"  {k}: {_yaml_quote(v)}")
                 else:
-                    lines.append(f"  # node-1: \"SECRET_KEY_FROM_PANEL\"")
+                    lines.append(f'  # node-1: "SECRET_KEY_FROM_PANEL"')
             else:
                 lines.append(f"{name}: {_yaml_quote(value)}")
 
@@ -351,23 +340,37 @@ def _render_secrets_yml(existing: dict | None = None) -> str:
 
 
 def _yaml_quote(value) -> str:
-    """Quote a value for YAML output."""
     if value is None or value == "":
         return '""'
     s = str(value)
-    # Multi-line values (RSA keys) need special handling
     if "\n" in s:
         return f"'{s}'"
-    # Values with special chars get double-quoted
     if any(c in s for c in ":#{}[]!|>&*?$'\"\\"):
-        # Use single quotes for values containing dollar signs (password hashes)
         if "$" in s:
             return f"'{s}'"
         return f'"{s}"'
     return f'"{s}"'
 
 
-def cmd_init() -> int:
+def _is_placeholder(value) -> bool:
+    if value is None:
+        return True
+    if isinstance(value, str) and value.strip() == "":
+        return True
+    if isinstance(value, dict) and len(value) == 0:
+        return True
+    return False
+
+
+def _prompt(message: str, default: str = "") -> str:
+    if default:
+        raw = input(f"  {message} [{default}]: ").strip()
+        return raw if raw else default
+    else:
+        return input(f"  {message}: ").strip()
+
+
+def init_secrets() -> int:
     path = secrets_path()
     existing = None
 
@@ -395,26 +398,10 @@ def cmd_init() -> int:
     return 0
 
 
-# ---------------------------------------------------------------------------
-# Check command
-# ---------------------------------------------------------------------------
-
-
-def _is_placeholder(value) -> bool:
-    """Return True if a value looks like a placeholder (empty or None)."""
-    if value is None:
-        return True
-    if isinstance(value, str) and value.strip() == "":
-        return True
-    if isinstance(value, dict) and len(value) == 0:
-        return True
-    return False
-
-
-def cmd_check(feature: str | None = None) -> int:
+def check_secrets(feature: str | None = None) -> int:
     path = secrets_path()
     if not path.exists():
-        print(f"Error: {path} not found. Run 'just secrets-init' first.", file=sys.stderr)
+        print(f"Error: {path} not found. Run 'just secrets-init' first.")
         return 1
 
     with open(path) as f:
@@ -462,47 +449,16 @@ def cmd_check(feature: str | None = None) -> int:
         return 1
 
 
-# ---------------------------------------------------------------------------
-# Distribute command
-# ---------------------------------------------------------------------------
-
-
-def cmd_distribute() -> int:
-    """Distribute secrets to consumer locations.
-
-    Currently a no-op since all consumers (Ansible playbooks, Python scripts)
-    read directly from secrets.yml. Kept as a hook for future consumers.
-    """
-    result = cmd_check()
+def distribute_secrets() -> int:
+    result = check_secrets()
     if result == 0:
         print("All secrets available to consumers.")
     return result
 
 
-# ---------------------------------------------------------------------------
-# Setup command (interactive)
-# ---------------------------------------------------------------------------
-
-
-def _prompt(message: str, default: str = "") -> str:
-    """Prompt user for input with optional default."""
-    if default:
-        raw = input(f"  {message} [{default}]: ").strip()
-        return raw if raw else default
-    else:
-        return input(f"  {message}: ").strip()
-
-
-def _confirm(message: str) -> bool:
-    raw = input(f"{message} [y/N]: ").strip().lower()
-    return raw in ("y", "yes")
-
-
-def cmd_setup() -> int:
-    """Interactive setup: walk through each section, prompt for missing secrets."""
+def setup_secrets() -> int:
     path = secrets_path()
 
-    # Load or create
     if path.exists():
         with open(path) as f:
             data = yaml.safe_load(f) or {}
@@ -517,7 +473,6 @@ def cmd_setup() -> int:
         section_name = section["section"]
         keys = section["keys"]
 
-        # Check which keys in this section are missing
         missing = [
             k for k in keys
             if _is_placeholder(data.get(k["name"], k.get("default")))
@@ -530,7 +485,7 @@ def cmd_setup() -> int:
         configured_count = len(keys) - len(missing)
         print(f"\n[{configured_count}/{len(keys)}] {section_name}")
 
-        if not _confirm(f"  Configure {section_name}?"):
+        if not confirm(f"  Configure {section_name}?"):
             print(f"  Skipped")
             continue
 
@@ -546,7 +501,6 @@ def cmd_setup() -> int:
                 print(f"    Generate: {gen_hint}")
 
             if is_dict:
-                # Dict keys need special handling -- just inform the user
                 print(f"    (dict value -- edit secrets.yml manually for this one)")
                 continue
 
@@ -566,60 +520,11 @@ def cmd_setup() -> int:
         print(f"Saved to {path}")
     else:
         if not path.exists():
-            # Generate the file even if nothing was entered so the structure exists
             content, _ = _render_secrets_yml(data)
             path.write_text(content)
             print(f"Generated {path} with defaults. Edit manually to add secrets.")
         else:
             print("No changes made.")
 
-    # Final status
     print()
-    return cmd_check()
-
-
-# ---------------------------------------------------------------------------
-# CLI entry point
-# ---------------------------------------------------------------------------
-
-
-def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        prog="secrets",
-        description="Manage project secrets from a single source of truth",
-    )
-    sub = parser.add_subparsers(dest="command", required=True)
-
-    sub.add_parser("init", help="Generate or update secrets.yml from schema")
-
-    check_p = sub.add_parser("check", help="Validate that all secrets are present")
-    check_p.add_argument(
-        "--feature",
-        type=str,
-        default=None,
-        help="Check only a specific section (e.g., 'remnawave panel', 'authelia')",
-    )
-
-    sub.add_parser("distribute", help="Push secrets to consumer locations")
-
-    sub.add_parser("setup", help="Interactive setup -- walks through each section and prompts for missing secrets")
-
-    return parser
-
-
-def main() -> None:
-    parser = _build_parser()
-    args = parser.parse_args()
-
-    if args.command == "init":
-        sys.exit(cmd_init())
-    elif args.command == "check":
-        sys.exit(cmd_check(args.feature))
-    elif args.command == "distribute":
-        sys.exit(cmd_distribute())
-    elif args.command == "setup":
-        sys.exit(cmd_setup())
-
-
-if __name__ == "__main__":
-    main()
+    return check_secrets()

@@ -1,42 +1,20 @@
-"""
-Guided workflow for adding a new VPN node to the Remnawave panel.
-
-Automates: config profile selection/creation, node registration,
-inbound activation, host creation, inventory and secrets updates.
-
-Usage: vps remnawave add-node --ip IP --name NAME --country CC --domain DOMAIN
-"""
-
 from __future__ import annotations
 
 import asyncio
 import copy
 import re
-import sys
 from pathlib import Path
 from typing import Any
 
 import httpx
 import yaml
 
-from .client import (
-    api_get,
-    api_patch,
-    api_post,
-    create_client,
-    find_project_root,
-    load_config,
-)
+from vps_cli import find_project_root
+from vps_cli.errors import ApiError, VpsError
+from vps_cli.util import BOLD, DIM, GREEN, RED, RESET, YELLOW
 
-# ANSI
-BOLD = "\033[1m"
-DIM = "\033[2m"
-GREEN = "\033[32m"
-RED = "\033[31m"
-YELLOW = "\033[33m"
-RESET = "\033[0m"
+from .client import api_get, api_patch, api_post, create_client, load_config
 
-# Default ports (match ansible defaults)
 DEFAULT_VLESS_PORT = 443
 DEFAULT_REALITY_PORT = 8443
 DEFAULT_SS_PORT = 8388
@@ -48,7 +26,7 @@ def _step(n: int, msg: str) -> None:
 
 
 def _ok(msg: str) -> None:
-    print(f"  {GREEN}✓{RESET} {msg}")
+    print(f"  {GREEN}v{RESET} {msg}")
 
 
 def _warn(msg: str) -> None:
@@ -56,7 +34,7 @@ def _warn(msg: str) -> None:
 
 
 def _err(msg: str) -> None:
-    print(f"  {RED}✗{RESET} {msg}")
+    print(f"  {RED}x{RESET} {msg}")
 
 
 def _info(msg: str) -> None:
@@ -64,7 +42,6 @@ def _info(msg: str) -> None:
 
 
 def _next_node_id(inventory_path: Path) -> str:
-    """Find the next available node-N id from inventory."""
     if not inventory_path.exists():
         return "node-1"
 
@@ -87,7 +64,6 @@ def _clone_config_for_ports(
     reality_port: int,
     ss_port: int,
 ) -> dict[str, Any]:
-    """Clone an xray config, modifying inbound ports and tags for custom ports."""
     config = copy.deepcopy(base_config)
 
     for inbound in config.get("inbounds", []):
@@ -106,13 +82,11 @@ def _clone_config_for_ports(
 
 
 async def _fetch_inbounds(client: httpx.AsyncClient) -> list[dict]:
-    """Fetch all inbounds across all config profiles."""
     data = await api_get(client, "/config-profiles/inbounds")
     return data.get("inbounds", [])
 
 
 def _extract_profiles(raw: Any) -> list[dict]:
-    """Normalize the config-profiles API response to a list."""
     if isinstance(raw, list):
         return raw
     if isinstance(raw, dict):
@@ -128,12 +102,9 @@ async def _find_or_create_profile(
     ss_port: int,
     profile_name: str,
 ) -> tuple[str, list[str]]:
-    """Find existing or create new config profile. Returns (profile_uuid, [inbound_uuids])."""
-
     if not _needs_custom_profile(vless_port, reality_port):
         if not profiles:
-            _err("No config profiles found in panel")
-            sys.exit(1)
+            raise VpsError("No config profiles found in panel")
 
         profile = profiles[0]
         profile_uuid = profile["uuid"]
@@ -141,7 +112,6 @@ async def _find_or_create_profile(
         _ok(f"Using existing profile: {profile['name']} ({len(inbound_uuids)} inbounds)")
         return profile_uuid, inbound_uuids
 
-    # Check if a profile for these ports already exists
     for profile in profiles:
         inbounds = profile.get("inbounds", [])
         ports = {inb.get("port") for inb in inbounds}
@@ -151,10 +121,8 @@ async def _find_or_create_profile(
             _ok(f"Found existing profile for ports {vless_port}/{reality_port}: {profile['name']}")
             return profile_uuid, inbound_uuids
 
-    # Clone the default profile with new ports
     if not profiles:
-        _err("No config profiles to clone from")
-        sys.exit(1)
+        raise VpsError("No config profiles to clone from")
 
     base = profiles[0]
     new_config = _clone_config_for_ports(base["config"], vless_port, reality_port, ss_port)
@@ -171,8 +139,7 @@ async def _find_or_create_profile(
         _ok(f"Created profile: {profile_name} ({len(inbound_uuids)} inbounds)")
         return profile_uuid, inbound_uuids
     except httpx.HTTPStatusError as e:
-        _err(f"Failed to create config profile: {e.response.status_code} {e.response.text}")
-        sys.exit(1)
+        raise ApiError(f"Failed to create config profile: {e.response.status_code} {e.response.text}") from e
 
 
 async def _create_or_find_node(
@@ -184,16 +151,12 @@ async def _create_or_find_node(
     profile_uuid: str,
     inbound_uuids: list[str],
 ) -> tuple[str, str | None]:
-    """Create node or find existing. Returns (node_uuid, connection_key_or_none)."""
-
-    # Check if node already exists (by IP)
     nodes_data = await api_get(client, "/nodes")
     for node in nodes_data:
         if node["address"] == ip:
             node_uuid = node["uuid"]
             _warn(f"Node already exists: {node['name']} ({node_uuid})")
 
-            # Update config profile assignment
             _info("Updating config profile assignment...")
             try:
                 await api_patch(client, "/nodes", {
@@ -209,7 +172,6 @@ async def _create_or_find_node(
 
             return node_uuid, None
 
-    # Create new node
     _info(f"Registering node '{name}' at {ip}...")
     try:
         result = await api_post(client, "/nodes", {
@@ -223,7 +185,6 @@ async def _create_or_find_node(
             },
         })
         node_uuid = result["uuid"]
-        # API may return connection key (check common field names)
         connection_key = (
             result.get("secretKey")
             or result.get("connectionKey")
@@ -233,20 +194,13 @@ async def _create_or_find_node(
         _ok(f"Node created: {name} ({node_uuid})")
         return node_uuid, connection_key
     except httpx.HTTPStatusError as e:
-        _err(f"Failed to create node: {e.response.status_code} {e.response.text}")
-        sys.exit(1)
+        raise ApiError(f"Failed to create node: {e.response.status_code} {e.response.text}") from e
 
 
 async def _ensure_squad_membership(
     client: httpx.AsyncClient,
     inbound_uuids: list[str],
 ) -> None:
-    """Ensure all inbound UUIDs are members of an internal squad.
-
-    Inbounds must belong to at least one squad to appear in subscriptions.
-    Finds the first squad and adds any missing inbounds to it.
-    """
-    # Get current inbound squad memberships
     all_inbounds = await _fetch_inbounds(client)
     inbound_squads = {
         inb["uuid"]: inb.get("activeSquads", [])
@@ -258,16 +212,15 @@ async def _ensure_squad_membership(
         _ok("All inbounds already in a squad")
         return
 
-    # Find existing squads
     try:
         squads_data = await api_get(client, "/internal-squads")
     except httpx.HTTPStatusError:
-        _warn("Could not fetch internal squads — enable inbounds manually in panel UI")
+        _warn("Could not fetch internal squads -- enable inbounds manually in panel UI")
         return
 
     squads = squads_data.get("internalSquads", [])
     if not squads:
-        _warn("No internal squads found — create one in panel UI and add inbounds")
+        _warn("No internal squads found -- create one in panel UI and add inbounds")
         return
 
     squad = squads[0]
@@ -283,11 +236,10 @@ async def _ensure_squad_membership(
         _ok(f"Added {len(missing)} inbound(s) to squad '{squad['name']}'")
     except httpx.HTTPStatusError as e:
         _err(f"Failed to update squad: {e.response.status_code} {e.response.text}")
-        _warn("Enable inbounds manually: Panel → Config Profiles → check the inbounds")
+        _warn("Enable inbounds manually: Panel -> Config Profiles -> check the inbounds")
 
 
 def _domain_to_suffix(domain: str) -> str:
-    """Extract short suffix from domain for host remarks. 'nl2.rutube.dad' → 'nl2'."""
     return domain.split(".")[0]
 
 
@@ -302,12 +254,9 @@ async def _create_hosts(
     vless_port: int,
     reality_port: int,
 ) -> None:
-    """Create subscription hosts for the node's inbounds."""
-
     existing_hosts = await api_get(client, "/hosts")
     existing_by_remark = {h["remark"]: h for h in existing_hosts}
 
-    # Build lookup: inbound UUID → inbound details
     inbound_map = {inb["uuid"]: inb for inb in all_inbounds if inb["uuid"] in inbound_uuids}
 
     suffix = _domain_to_suffix(domain)
@@ -364,14 +313,12 @@ async def _create_hosts(
         if remark in existing_by_remark:
             existing = existing_by_remark[remark]
             existing_nodes = existing.get("nodes", [])
-            # Normalize node refs to UUID strings
             node_ids = [n["uuid"] if isinstance(n, dict) else n for n in existing_nodes]
 
             if node_uuid in node_ids:
                 _ok(f"Host '{remark}' already associated with this node")
                 continue
 
-            # Add node to existing host
             node_ids.append(node_uuid)
             try:
                 await api_patch(client, "/hosts", {
@@ -399,8 +346,6 @@ def _update_inventory(
     vless_port: int,
     reality_port: int,
 ) -> None:
-    """Append a new node entry to the nodes.yml inventory."""
-
     if inventory_path.exists():
         content = inventory_path.read_text()
         if f"{node_id}:" in content:
@@ -410,7 +355,6 @@ def _update_inventory(
         _err(f"Inventory not found: {inventory_path}")
         return
 
-    # Build the entry
     lines = [
         "",
         f"        {node_id}:",
@@ -426,7 +370,6 @@ def _update_inventory(
 
     block = "\n".join(lines) + "\n"
 
-    # Insert before the `vars:` section of remnawave_nodes
     content = inventory_path.read_text()
     vars_match = re.search(r"\n(\s+)vars:", content)
     if vars_match:
@@ -440,35 +383,31 @@ def _update_inventory(
 
 
 def _save_secret_key(secrets_path: Path, node_id: str, key: str) -> None:
-    """Add the node's connection key to secrets.yml using string manipulation."""
     if not secrets_path.exists():
         _err(f"secrets.yml not found at {secrets_path}")
         return
 
     content = secrets_path.read_text()
 
-    # Check if already present
     if f"{node_id}:" in content:
         _warn(f"Key for '{node_id}' already in secrets.yml")
         return
 
-    # Find the node_secret_keys section and append
     pattern = r"(node_secret_keys:\s*\n(?:\s+\S+:.*\n)*)"
     match = re.search(pattern, content)
     if match:
         insert_pos = match.end()
-        indent = "  "  # match existing indentation
+        indent = "  "
         new_line = f'{indent}{node_id}: "{key}"\n'
         new_content = content[:insert_pos] + new_line + content[insert_pos:]
         secrets_path.write_text(new_content)
         _ok(f"Saved connection key for {node_id}")
     else:
         _warn("Could not find node_secret_keys section in secrets.yml")
-        print(f"  Add manually: node_secret_keys.{node_id}: \"{key}\"")
+        print(f'  Add manually: node_secret_keys.{node_id}: "{key}"')
 
 
 def _get_existing_key(secrets_path: Path, node_id: str) -> str | None:
-    """Check if a connection key already exists in secrets.yml."""
     if not secrets_path.exists():
         return None
     with open(secrets_path) as f:
@@ -505,7 +444,6 @@ async def _add_node(
     print(f"  Node ID: {node_id}")
 
     async with create_client(config["api_token"], config["panel_url"]) as client:
-        # Step 1: Config profile
         _step(1, "Config profile")
         profiles_data = await api_get(client, "/config-profiles")
         profiles = _extract_profiles(profiles_data)
@@ -514,17 +452,14 @@ async def _add_node(
             client, profiles, vless_port, reality_port, ss_port, profile_name,
         )
 
-        # Fetch full inbound details for host creation
         all_inbounds = await _fetch_inbounds(client)
 
-        # Step 2: Register node
         _step(2, "Node registration")
         node_uuid, connection_key = await _create_or_find_node(
             client, name, ip, country, DEFAULT_APP_PORT,
             profile_uuid, inbound_uuids,
         )
 
-        # Step 3: Connection key
         _step(3, "Connection key")
         if connection_key:
             _ok("Key obtained from API")
@@ -535,7 +470,7 @@ async def _add_node(
                 _ok("Key already in secrets.yml")
             else:
                 print(f"\n  {YELLOW}Manual step required:{RESET}")
-                print(f"  1. Go to {BOLD}{config['panel_url']}{RESET} → Nodes")
+                print(f"  1. Go to {BOLD}{config['panel_url']}{RESET} -> Nodes")
                 print(f"  2. Find '{name}' and copy the connection key")
                 print(f"  3. Paste it below\n")
 
@@ -543,21 +478,18 @@ async def _add_node(
                     key = input("  Connection key: ").strip()
                 except (EOFError, KeyboardInterrupt):
                     print()
-                    _err("Aborted")
-                    sys.exit(1)
+                    raise VpsError("Aborted")
 
                 if key:
                     _save_secret_key(secrets_path, node_id, key)
                 else:
-                    _warn("No key provided — add manually to secrets.yml later")
+                    _warn("No key provided -- add manually to secrets.yml later")
                     print(f"  node_secret_keys:")
-                    print(f"    {node_id}: \"<connection-key>\"")
+                    print(f'    {node_id}: "<connection-key>"')
 
-        # Step 4: Internal squad (required for inbounds to appear in subscriptions)
         _step(4, "Internal squad")
         await _ensure_squad_membership(client, inbound_uuids)
 
-        # Step 5: Create hosts
         _step(5, "Subscription hosts")
         await _create_hosts(
             client, node_uuid, ip, domain,
@@ -565,14 +497,12 @@ async def _add_node(
             vless_port, reality_port,
         )
 
-    # Step 6: Update inventory (outside API context)
     _step(6, "Inventory")
     _update_inventory(
         inventory_path, node_id, ip, name, domain,
         vless_port, reality_port,
     )
 
-    # Summary
     tags_note = ""
     if custom_ports:
         tags_note = " --tags node"
@@ -592,11 +522,6 @@ def main(
     reality_port: int = DEFAULT_REALITY_PORT,
 ) -> None:
     asyncio.run(_add_node(
-        ip=ip,
-        name=name,
-        country=country,
-        domain=domain,
-        node_id=node_id,
-        vless_port=vless_port,
-        reality_port=reality_port,
+        ip=ip, name=name, country=country, domain=domain,
+        node_id=node_id, vless_port=vless_port, reality_port=reality_port,
     ))

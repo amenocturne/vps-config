@@ -1,27 +1,21 @@
-# Scripts package for VPS configuration
-
 from __future__ import annotations
 
-import sys
 from pathlib import Path
+
+from vps_cli.errors import ConfigError
+
+__version__ = "0.1.0"
 
 CONFIG_PATH = Path.home() / ".config" / "vps.yml"
 
 
 def find_project_root() -> Path:
-    """Find the project root directory.
-
-    1. Walk up from CWD (works when inside the project)
-    2. Fall back to saved path in ~/.config/vps.yml (works from anywhere)
-    """
-    # Walk up from CWD
     current = Path.cwd()
     for parent in [current, *current.parents]:
         if (parent / "pyproject.toml").exists() and (parent / "ansible").is_dir():
             _save_project_root(parent)
             return parent
 
-    # Fall back to saved config
     if CONFIG_PATH.exists():
         import yaml
 
@@ -33,13 +27,13 @@ def find_project_root() -> Path:
             if (p / "pyproject.toml").exists():
                 return p
 
-    print("Error: could not find project root", file=sys.stderr)
-    print(f"Run 'vps' from the project directory once, or set project_root in {CONFIG_PATH}", file=sys.stderr)
-    sys.exit(1)
+    raise ConfigError(
+        f"Could not find project root. "
+        f"Run 'vps' from the project directory once, or set project_root in {CONFIG_PATH}"
+    )
 
 
 def _save_project_root(root: Path) -> None:
-    """Auto-save project root to config for global access."""
     import yaml
 
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)

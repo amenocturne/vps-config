@@ -1,11 +1,3 @@
-"""
-Pydantic models for Remnawave panel state representation.
-
-These models define the schema for state.yml -- a git-diffable snapshot
-of the panel's desired configuration. Volatile fields (timestamps, live
-counters, connection status) are deliberately excluded.
-"""
-
 from __future__ import annotations
 
 from datetime import datetime
@@ -20,8 +12,6 @@ model_config = ConfigDict(frozen=True)
 
 
 class InboundState(BaseModel):
-    """An inbound endpoint within a config profile."""
-
     model_config = model_config
 
     uuid: Optional[str] = None
@@ -33,8 +23,6 @@ class InboundState(BaseModel):
 
 
 class ConfigProfileState(BaseModel):
-    """Xray config profile with its inbounds."""
-
     model_config = model_config
 
     uuid: str
@@ -44,8 +32,6 @@ class ConfigProfileState(BaseModel):
 
 
 class HostInboundRef(BaseModel):
-    """Reference to which config profile inbound a host uses."""
-
     model_config = model_config
 
     config_profile_uuid: Optional[str] = None
@@ -53,8 +39,6 @@ class HostInboundRef(BaseModel):
 
 
 class HostState(BaseModel):
-    """A subscription host entry."""
-
     model_config = model_config
 
     uuid: str
@@ -83,8 +67,6 @@ class HostState(BaseModel):
 
 
 class NodeState(BaseModel):
-    """A VPN node server."""
-
     model_config = model_config
 
     uuid: str
@@ -104,8 +86,6 @@ class NodeState(BaseModel):
 
 
 class UserState(BaseModel):
-    """A VPN user account."""
-
     model_config = model_config
 
     uuid: str
@@ -123,8 +103,6 @@ class UserState(BaseModel):
 
 
 class PanelState(BaseModel):
-    """Complete panel state -- the top-level structure of state.yml."""
-
     model_config = model_config
 
     config_profiles: list[ConfigProfileState]
@@ -134,7 +112,6 @@ class PanelState(BaseModel):
 
 
 def load_state_file(path: Path) -> PanelState:
-    """Load a state.yml file and parse it into a PanelState model."""
     with open(path) as f:
         raw = yaml.safe_load(f)
     return PanelState.model_validate(raw)

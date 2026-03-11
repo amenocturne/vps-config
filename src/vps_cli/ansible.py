@@ -1,0 +1,95 @@
+from __future__ import annotations
+
+import subprocess
+from pathlib import Path
+
+from vps_cli import find_project_root
+from vps_cli.errors import ConfigError
+
+TARGETS = {
+    "vps": {
+        "playbook": "playbooks/site.yml",
+        "inventory": "inventories/production.yml",
+        "host": "vps",
+        "description": "main server",
+    },
+    "remnawave": {
+        "playbook": "playbooks/remnawave.yml",
+        "inventory": "inventories/remnawave-test.yml",
+        "host": "remnawave",
+        "description": "panel server",
+    },
+    "nodes": {
+        "playbook": "playbooks/node.yml",
+        "inventory": "inventories/nodes.yml",
+        "host": "remnawave_nodes",
+        "description": "all VPN nodes",
+    },
+}
+
+ROLE_TARGETS = {
+    "caddy": ("caddy", "role only (on vps)"),
+    "authelia": ("authelia", "role only (on vps)"),
+    "grafana": ("grafana", "role only (on vps)"),
+}
+
+
+def resolve_target(target_name: str | None) -> dict:
+    name = target_name or "vps"
+    if name not in TARGETS:
+        raise ConfigError(f"Unknown target '{name}'. Valid: {', '.join(TARGETS)}")
+    return TARGETS[name]
+
+
+def run_ansible(
+    *,
+    playbook: str | None = None,
+    inventory: str,
+    host: str | None = None,
+    module: str | None = None,
+    module_args: str | None = None,
+    tags: str | None = None,
+    limit: str | None = None,
+    verbose: bool = False,
+    check: bool = False,
+    syntax_check: bool = False,
+) -> int:
+    root = find_project_root()
+    ansible_dir = root / "ansible"
+
+    if playbook:
+        cmd = ["ansible-playbook", playbook, "-i", inventory]
+        if tags:
+            cmd.extend(["--tags", tags])
+        if limit:
+            cmd.extend(["--limit", limit])
+        if verbose:
+            cmd.append("-v")
+        if check:
+            cmd.append("--check")
+        if syntax_check:
+            cmd.append("--syntax-check")
+    elif host and module:
+        cmd = ["ansible", host, "-i", inventory, "-m", module]
+        if module_args:
+            cmd.extend(["-a", module_args])
+    else:
+        print("Error: must specify either playbook or host+module")
+        return 1
+
+    result = subprocess.run(cmd, cwd=ansible_dir)
+    return result.returncode
+
+
+def ping_target(name: str, cfg: dict, ansible_dir: Path) -> tuple[str, bool]:
+    try:
+        result = subprocess.run(
+            ["ansible", cfg["host"], "-i", cfg["inventory"],
+             "-m", "ping", "-T", "5", "--one-line"],
+            cwd=ansible_dir,
+            capture_output=True,
+            timeout=10,
+        )
+        return (name, result.returncode == 0)
+    except (subprocess.TimeoutExpired, Exception):
+        return (name, False)
