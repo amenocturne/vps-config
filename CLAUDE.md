@@ -25,47 +25,6 @@ Domain: `amenocturne.space` (panel at `panel.amenocturne.space`, nodes at `*.rut
 - Role-only targets: `caddy`, `authelia`, `grafana` (deploy single role on vps)
 - Single node: `vps deploy node-2` (limits to one node)
 
-## Python Package Structure
-
-Single `vps_cli` package under `src/` layout:
-
-```
-src/vps_cli/
-  __init__.py              # find_project_root(), CONFIG_PATH
-  __main__.py              # python -m vps_cli
-  errors.py                # VpsError, SecretsError, ConfigError, AnsibleError, ApiError
-  util.py                  # ANSI colors, confirm(), prompt()
-  ansible.py               # TARGETS, ROLE_TARGETS, run_ansible(), ping_target()
-  secrets.py               # SCHEMA, init/check/distribute/setup_secrets()
-  certs.py                 # renew_certs() — Cloudflare Origin CA
-  validate.py              # run_validation() — pre-deploy checks
-  health_check.py          # run_health_checks() — infrastructure health
-  test_local.py            # Docker test environment
-  cli/
-    __init__.py            # _build_parser(), main(), dispatch
-    status.py              # cmd_status() — dashboard
-    setup.py               # cmd_setup() — first-time setup
-    deploy.py              # cmd_deploy() — Ansible deploy
-    doctor.py              # cmd_doctor() — all checks
-    server.py              # cmd_server_logs/restart/ssh/test()
-    secrets.py             # cmd_secrets() — check/init
-    certs.py               # cmd_certs_renew()
-    remnawave.py           # cmd_remnawave_export/sync/snapshot/add_node/gen_keys()
-  remnawave/
-    __init__.py
-    client.py              # httpx async client, API wrappers
-    models.py              # Pydantic models (PanelState, etc.)
-    export.py              # export_state() — panel -> state.yml
-    snapshot.py            # Clash config download
-    add_node.py            # guided node provisioning workflow
-    gen_keys.py            # Reality x25519 keypair generation
-    sync/
-      __init__.py          # run_sync(mode, state_path, delete_missing)
-      diff.py              # compute_sync_plan() — pure diff
-      render.py            # render_plan() — terminal output
-      apply.py             # apply_plan() — mutations
-```
-
 ## CLI Commands
 
 Entry point: `vps` (installed via `uv tool install -e .` or run with `just vps <args>`)
