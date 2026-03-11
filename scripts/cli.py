@@ -539,6 +539,16 @@ def cmd_remnawave_add_node(args: argparse.Namespace) -> int:
         return e.code if isinstance(e.code, int) else 1
 
 
+def cmd_remnawave_gen_keys(args: argparse.Namespace) -> int:
+    from scripts.gen_keys import main as gen_keys_main
+
+    return gen_keys_main(
+        prefix=args.prefix,
+        node=args.node,
+        save_secrets=not args.no_save,
+    )
+
+
 def cmd_remnawave_sync(args: argparse.Namespace) -> int:
     argv = ["--apply"] if args.mode == "apply" else ["--plan"]
     old_argv = sys.argv
@@ -629,6 +639,11 @@ def _build_parser() -> argparse.ArgumentParser:
     rw_snapshot = rw_sub.add_parser("snapshot", help="Save Clash configs locally for offline use")
     rw_snapshot.add_argument("--user", default=None, help="Username (default: all 'MY' tagged users)")
 
+    rw_genkeys = rw_sub.add_parser("gen-keys", help="Generate Reality keypair and inject into state.yml placeholders")
+    rw_genkeys.add_argument("--prefix", required=True, help="Placeholder prefix (e.g., REALITY2 for __REALITY2_PRIVATE_KEY__)")
+    rw_genkeys.add_argument("--node", default=None, help="Node to generate keys on (default: first in inventory)")
+    rw_genkeys.add_argument("--no-save", action="store_true", help="Don't save keys to secrets.yml")
+
     # certs
     certs_p = sub.add_parser("certs", help="SSL certificate management")
     certs_p.set_defaults(_parser=certs_p)
@@ -703,6 +718,7 @@ def _dispatch_remnawave(args: argparse.Namespace) -> int:
         "sync": cmd_remnawave_sync,
         "snapshot": cmd_remnawave_snapshot,
         "add-node": cmd_remnawave_add_node,
+        "gen-keys": cmd_remnawave_gen_keys,
     }[args.remnawave_command](args)
 
 

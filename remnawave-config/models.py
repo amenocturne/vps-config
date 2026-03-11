@@ -24,7 +24,7 @@ class InboundState(BaseModel):
 
     model_config = model_config
 
-    uuid: str
+    uuid: Optional[str] = None
     tag: str
     type: str
     network: Optional[str] = None

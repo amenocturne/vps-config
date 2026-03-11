@@ -157,6 +157,16 @@
     comment: "VLESS Reality primary"
   when: ansible_os_family == "Debian"
 
+- name: Configure firewall - Allow VLESS Reality secondary port
+  ufw:
+    rule: allow
+    port: "{{ remnawave_node_reality2_port }}"
+    proto: tcp
+    comment: "VLESS Reality secondary (kagi.com)"
+  when:
+    - ansible_os_family == "Debian"
+    - remnawave_node_reality2_port is defined
+
 - name: Configure firewall - Allow VLESS WebSocket port
   ufw:
     rule: allow
@@ -214,6 +224,12 @@
         - Destination: {{ reality_dest }}
         - Server Names: {{ reality_server_names | join(', ') }}
 
+      {% if remnawave_node_reality2_port is defined %}
+      VLESS + Reality (secondary):
+        - Port: {{ remnawave_node_reality2_port }}
+        - Destination: kagi.com:443
+
+      {% endif %}
       VLESS + WebSocket + TLS (fallback):
         - Port: {{ remnawave_node_ws_port }}
         - Via Cloudflare CDN

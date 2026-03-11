@@ -21,6 +21,7 @@ all:
           # Port overrides — 443 & 8443 taken by x-ui/xray & syncthing
           remnawave_node_reality_port: 9443
           remnawave_node_ws_port: 2083
+          remnawave_node_reality2_port: 2087
 
       vars:
         # SSH Configuration (same for all nodes)
@@ -48,7 +49,8 @@ all:
         remnawave_node_app_port: 2222
 
         # VPN Protocol Ports
-        remnawave_node_reality_port: 443        # VLESS + Reality (primary)
+        remnawave_node_reality_port: 443        # VLESS + Reality (primary, google.com)
+        remnawave_node_reality2_port: 2053      # VLESS + Reality (secondary, kagi.com)
         remnawave_node_ws_port: 8443            # VLESS + WebSocket + TLS (Cloudflare CDN)
         remnawave_node_shadowsocks_port: 8388   # Shadowsocks (optional)
         remnawave_node_enable_shadowsocks: true
