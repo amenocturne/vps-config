@@ -1,3 +1,5 @@
+import base64
+
 import httpx
 from config import REMNAWAVE_API_URL, REMNAWAVE_API_TOKEN
 
@@ -26,6 +28,10 @@ async def get_users_by_telegram_id(tg_id: int) -> list[dict] | None:
 
 
 async def get_subscription(short_uuid: str, client_type: str | None = None) -> str:
+    if client_type == "raw":
+        r = await _get_client().get(f"/sub/{short_uuid}")
+        r.raise_for_status()
+        return base64.b64decode(r.text.strip()).decode()
     path = f"/sub/{short_uuid}/{client_type}" if client_type else f"/sub/{short_uuid}"
     r = await _get_client().get(path)
     r.raise_for_status()

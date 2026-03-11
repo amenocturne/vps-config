@@ -14,17 +14,8 @@ from telegram.ext import (
     filters,
 )
 
-from config import BOT_TOKEN, ADMIN_TELEGRAM_ID
+from config import BOT_TOKEN, ADMIN_TELEGRAM_ID, CLIENT_TYPES
 import remnawave
-
-_auth_cache: dict[int, list[dict]] = {}
-
-CLIENT_TYPES = [
-    [("V2Ray/Streisand", "v2ray-json"), ("Clash", "clash")],
-    [("Sing-Box", "singbox"), ("Mihomo", "mihomo")],
-    [("Stash", "stash"), ("JSON", "json")],
-]
-
 
 def _reply_keyboard(tg_id: int) -> ReplyKeyboardMarkup:
     rows = [["🔑 Получить конфиг"]]
@@ -33,50 +24,95 @@ def _reply_keyboard(tg_id: int) -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(rows, resize_keyboard=True)
 
 
+def _is_admin(tg_id: int) -> bool:
+    return tg_id == ADMIN_TELEGRAM_ID
+
+
 async def _authorize(tg_id: int) -> list[dict] | None:
-    if tg_id in _auth_cache:
-        return _auth_cache[tg_id]
-    users = await remnawave.get_users_by_telegram_id(tg_id)
-    if users:
-        _auth_cache[tg_id] = users
-    return users
+    return await remnawave.get_users_by_telegram_id(tg_id)
+
+
+async def _is_authorized(tg_id: int) -> bool:
+    return _is_admin(tg_id) or bool(await _authorize(tg_id))
 
 
 async def _start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     tg_id = update.effective_user.id
-    users = await _authorize(tg_id)
-    if not users:
+    if not await _is_authorized(tg_id):
+        await update.message.reply_text(
+            f"Твой Telegram ID: <code>{tg_id}</code>\n\n"
+            "Отправь его администратору для получения доступа.",
+            parse_mode="HTML",
+        )
         return
     await update.message.reply_text(
-        "Привет! Используй кнопку ниже для получения конфига.",
+        "Привет! Нажми кнопку ниже для получения конфига.",
         reply_markup=_reply_keyboard(tg_id),
     )
 
 
+def _client_type_keyboard(short_uuid: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(label, callback_data=f"config:{short_uuid}:{cb}") for label, cb in row]
+        for row in CLIENT_TYPES
+    ])
+
+
 async def _get_config_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     tg_id = update.effective_user.id
-    if not await _authorize(tg_id):
+    if not await _is_authorized(tg_id):
         return
-    keyboard = [
-        [InlineKeyboardButton(label, callback_data=f"config:{cb}") for label, cb in row]
-        for row in CLIENT_TYPES
-    ]
-    await update.message.reply_text(
+
+    users = await _authorize(tg_id)
+    if not users:
+        if _is_admin(tg_id):
+            await update.message.reply_text("Нет привязанного пользователя в панели.")
+        return
+
+    if len(users) == 1:
+        await update.message.reply_text(
+            "Выбери формат конфига:",
+            reply_markup=_client_type_keyboard(users[0]["shortUuid"]),
+        )
+    else:
+        keyboard = [
+            [InlineKeyboardButton(
+                u.get("username", u["shortUuid"]),
+                callback_data=f"pick_user:{u['shortUuid']}",
+            )]
+            for u in users
+        ]
+        await update.message.reply_text(
+            "Выбери пользователя:",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+
+
+async def _pick_user_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    tg_id = query.from_user.id
+    if not await _is_authorized(tg_id):
+        await query.answer()
+        return
+
+    short_uuid = query.data.removeprefix("pick_user:")
+    await query.answer()
+    await query.message.reply_text(
         "Выбери формат конфига:",
-        reply_markup=InlineKeyboardMarkup(keyboard),
+        reply_markup=_client_type_keyboard(short_uuid),
     )
 
 
 async def _config_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     tg_id = query.from_user.id
-    users = await _authorize(tg_id)
-    if not users:
+    if not await _is_authorized(tg_id):
         await query.answer()
         return
 
-    client_type = query.data.removeprefix("config:")
-    short_uuid = users[0]["shortUuid"]
+    # callback data: config:{short_uuid}:{client_type}
+    parts = query.data.removeprefix("config:").split(":", 1)
+    short_uuid, client_type = parts[0], parts[1]
 
     try:
         config = await remnawave.get_subscription(short_uuid, client_type)
@@ -86,8 +122,9 @@ async def _config_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
     await query.answer()
 
-    if len(config) <= 4096:
-        await query.message.reply_text(f"```\n{config}\n```", parse_mode="Markdown")
+    wrapped = f"<pre>{config}</pre>"
+    if len(wrapped) <= 4096:
+        await query.message.reply_text(wrapped, parse_mode="HTML")
     else:
         buf = io.BytesIO(config.encode())
         buf.name = f"{client_type}.txt"
@@ -96,7 +133,7 @@ async def _config_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
 async def _users_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     tg_id = update.effective_user.id
-    if tg_id != ADMIN_TELEGRAM_ID or not await _authorize(tg_id):
+    if not _is_admin(tg_id):
         return
 
     try:
@@ -153,7 +190,7 @@ async def _user_detail_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
 async def _ping(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     tg_id = update.effective_user.id
-    if tg_id != ADMIN_TELEGRAM_ID or not await _authorize(tg_id):
+    if not _is_admin(tg_id):
         return
 
     ok = await remnawave.ping()
@@ -163,11 +200,15 @@ async def _ping(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def _fallback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     tg_id = update.effective_user.id
-    users = await _authorize(tg_id)
-    if not users:
+    if not await _is_authorized(tg_id):
+        await update.message.reply_text(
+            f"Твой Telegram ID: <code>{tg_id}</code>\n\n"
+            "Отправь его администратору для получения доступа.",
+            parse_mode="HTML",
+        )
         return
     await update.message.reply_text(
-        "Используй кнопку ниже для получения конфига.",
+        "Нажми кнопку ниже для получения конфига.",
         reply_markup=_reply_keyboard(tg_id),
     )
 
@@ -179,6 +220,7 @@ def main() -> None:
     app.add_handler(MessageHandler(filters.Text(["🔑 Получить конфиг"]), _get_config_menu))
     app.add_handler(MessageHandler(filters.Text(["👥 Пользователи"]), _users_list))
     app.add_handler(MessageHandler(filters.Text(["🏓 Пинг"]), _ping))
+    app.add_handler(CallbackQueryHandler(_pick_user_callback, pattern=r"^pick_user:"))
     app.add_handler(CallbackQueryHandler(_config_callback, pattern=r"^config:"))
     app.add_handler(CallbackQueryHandler(_user_detail_callback, pattern=r"^user:"))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, _fallback))

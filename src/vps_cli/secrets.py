@@ -67,6 +67,20 @@ SCHEMA = [
                 "default": "https://sub.amenocturne.space",
                 "generate": None,
             },
+            {
+                "name": "telegram_bot_token",
+                "description": "Telegram bot token from BotFather",
+                "used_by": ["remnawave playbook"],
+                "default": "",
+                "generate": None,
+            },
+            {
+                "name": "admin_telegram_id",
+                "description": "Admin's Telegram user ID (integer)",
+                "used_by": ["remnawave playbook"],
+                "default": "",
+                "generate": None,
+            },
         ],
     },
     {

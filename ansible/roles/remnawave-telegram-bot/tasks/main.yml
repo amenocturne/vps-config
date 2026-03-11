@@ -1,0 +1,56 @@
+---
+# Remnawave Telegram Bot Deployment Tasks
+
+- name: Create telegram bot directory
+  file:
+    path: "{{ telegram_bot_directory }}"
+    state: directory
+    mode: '0755'
+
+- name: Copy bot source files
+  copy:
+    src: "{{ playbook_dir }}/../../telegram-bot/{{ item }}"
+    dest: "{{ telegram_bot_directory }}/{{ item }}"
+    mode: '0644'
+  loop:
+    - bot.py
+    - remnawave.py
+    - config.py
+    - pyproject.toml
+    - uv.lock
+    - Dockerfile
+  register: bot_sources
+
+- name: Deploy telegram bot docker-compose.yml
+  template:
+    src: docker-compose-telegram-bot.yml.j2
+    dest: "{{ telegram_bot_directory }}/docker-compose.yml"
+    mode: '0644'
+  register: bot_compose
+
+- name: Stop existing telegram bot if config changed
+  community.docker.docker_compose_v2:
+    project_src: "{{ telegram_bot_directory }}"
+    state: absent
+  when: bot_compose.changed or bot_sources.changed
+  ignore_errors: yes
+
+- name: Build and start Telegram Bot with Docker Compose
+  community.docker.docker_compose_v2:
+    project_src: "{{ telegram_bot_directory }}"
+    state: present
+    build: always
+
+- name: Display telegram bot info
+  debug:
+    msg: |
+      ================================================================================
+      Remnawave Telegram Bot Deployed
+      ================================================================================
+
+      Container: remnawave-telegram-bot
+      Network: remnawave-network
+
+      The bot is running and connected to the Remnawave panel API.
+
+      ================================================================================
