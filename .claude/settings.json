@@ -1,7 +1,12 @@
 {
   "sandbox": {
     "filesystem": {
-      "denyRead": ["secrets.yml"]
+      "denyRead": [
+        "secrets.yml",
+        "ansible/inventories/*/certs/key.pem",
+        "tmp/generated-secrets.txt",
+        "tmp/remnawave-nodes-ca.pem"
+      ]
     }
   }
 }
