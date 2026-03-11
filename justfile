@@ -4,6 +4,9 @@
 #   just install   — install `vps` globally, then use `vps <args>` from anywhere
 #   just vps <args> — run via uv without installing (e.g. just vps doctor --secrets)
 
+default:
+    @just --list
+
 install:
     uv tool install -e . --force
 
