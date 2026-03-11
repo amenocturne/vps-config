@@ -72,7 +72,7 @@ async def _get_config_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     if len(users) == 1:
         sub_link = f"{SUBSCRIPTION_BASE_URL}/sub/{users[0]['shortUuid']}"
         await update.message.reply_text(
-            f"🔗 Ссылка подписки:\n<code>{sub_link}</code>\n\n"
+            f"🔗 <a href=\"{sub_link}\">Ссылка подписки</a>\n\n"
             "Или выбери формат конфига:",
             parse_mode="HTML",
             reply_markup=_client_type_keyboard(users[0]["shortUuid"]),
