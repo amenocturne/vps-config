@@ -83,6 +83,11 @@ dns:
   fake-ip-range: 198.18.0.1/16
   fake-ip-filter:
     - rule-set:geosite-private
+    - rule-set:geosite-ru
+    - rule-set:ru-inline
+    - "*.ru"
+    - "*.su"
+    - "*.by"
     - "*.lan"
     - "*.msftncsi.com"
   default-nameserver:
