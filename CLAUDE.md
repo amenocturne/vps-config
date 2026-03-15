@@ -83,6 +83,7 @@ vps remnawave gen-keys           # generate Reality keypair (--prefix, --node)
 src/vps_cli/                     # all Python code
 remnawave-config/state.yml       # exported panel state (gitignored)
 remnawave-config/snapshots/      # Clash config snapshots (gitignored)
+remnawave-config/templates/      # Mihomo subscription templates (version-controlled)
 ansible/playbooks/site.yml       # main server playbook
 ansible/playbooks/remnawave.yml  # panel server playbook
 ansible/playbooks/node.yml       # VPN node playbook

@@ -1,0 +1,354 @@
+# Mihomo subscription template — Russian traffic splitting
+#
+# Logic:
+#   1. Private/LAN → DIRECT
+#   2. Ads → REJECT
+#   3. Torrents → DIRECT
+#   4. QUIC → REJECT (improves proxy compatibility)
+#   5. Blocked .ru/.su sites that would otherwise match RU rules → VPN
+#   6. Russian domestic (geosite-ru, geoip-ru, .ru/.su/.by) → DIRECT
+#   7. Everything else (YouTube, Discord, Telegram, etc.) → VPN
+#
+# Upload to: Panel → Subscription → Templates → Mihomo
+# Based on community templates by Davoyan and Legiz.
+
+mixed-port: 7890
+allow-lan: true
+tcp-concurrent: true
+enable-process: true
+find-process-mode: always
+mode: rule
+log-level: info
+ipv6: false
+keep-alive-interval: 30
+unified-delay: true
+
+profile:
+  store-selected: true
+  store-fake-ip: true
+
+sniffer:
+  enable: true
+  force-dns-mapping: true
+  parse-pure-ip: true
+  override-destination: false
+  sniff:
+    HTTP:
+      ports: [80, 8080-8880]
+    TLS:
+      ports: [443, 8443]
+  skip-dst-address:
+    - 0.0.0.0/8
+    - 10.0.0.0/8
+    - 100.64.0.0/10
+    - 127.0.0.0/8
+    - 169.254.0.0/16
+    - 172.16.0.0/12
+    - 192.0.0.0/24
+    - 192.168.0.0/16
+    - 224.0.0.0/3
+    - fc00::/7
+    - fe80::/10
+    - ff00::/8
+
+tun:
+  enable: true
+  stack: mixed
+  auto-route: true
+  auto-detect-interface: true
+  dns-hijack:
+    - any:53
+  strict-route: true
+  route-exclude-address:
+    - 0.0.0.0/8
+    - 10.0.0.0/8
+    - 100.64.0.0/10
+    - 127.0.0.0/8
+    - 169.254.0.0/16
+    - 172.16.0.0/12
+    - 192.0.0.0/24
+    - 192.168.0.0/16
+    - 224.0.0.0/3
+    - fc00::/7
+    - fe80::/10
+    - ff00::/8
+
+dns:
+  enable: true
+  prefer-h3: false
+  use-hosts: true
+  use-system-hosts: true
+  ipv6: false
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  fake-ip-filter:
+    - rule-set:geosite-private
+    - "*.lan"
+    - "*.msftncsi.com"
+  default-nameserver:
+    - https://94.140.14.14/dns-query#DIRECT  # AdGuard
+    - https://8.8.8.8/dns-query#DIRECT
+  proxy-server-nameserver:
+    - https://94.140.14.14/dns-query#DIRECT
+    - https://8.8.8.8/dns-query#DIRECT
+  direct-nameserver:
+    - https://77.88.8.8/dns-query#DIRECT  # Yandex
+    - https://8.8.8.8/dns-query#DIRECT
+  nameserver:
+    - https://8.8.8.8/dns-query#VPN
+    - https://94.140.14.14/dns-query#VPN
+  nameserver-policy:
+    rule-set:oisd_big:
+      - rcode://refused
+    # Rule-set hosting resolves via VPN (GitHub blocked in some regions)
+    raw.githubusercontent.com,cdn.jsdelivr.net,github.com:
+      - https://8.8.8.8/dns-query#VPN
+      - https://94.140.14.14/dns-query#VPN
+    # Blocked .ru sites resolve via VPN (before RU domestic DNS)
+    rule-set:ru-inside,refilter_domains,ru-inline-banned:
+      - https://1.1.1.1/dns-query#VPN
+      - https://8.8.8.8/dns-query#VPN
+    # Russian domestic → Yandex DNS (direct)
+    rule-set:ru-inline,geosite-ru:
+      - https://77.88.8.8/dns-query#RU
+      - https://8.8.8.8/dns-query#RU
+
+proxies:
+  - name: DNS-OUT
+    type: dns
+  # LEAVE THIS LINE!
+
+proxy-groups:
+  - name: VPN
+    icon: https://cdn.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Hijacking.png
+    type: select
+    proxies:
+      - Auto
+      - Fallback
+      # LEAVE THIS LINE!
+
+  - name: RU
+    icon: https://cdn.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Russia.png
+    type: select
+    remnawave:
+      include-proxies: false
+    proxies:
+      - DIRECT
+
+  - name: Auto
+    icon: https://cdn.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Auto.png
+    type: url-test
+    tolerance: 150
+    url: https://cp.cloudflare.com/generate_204
+    interval: 300
+    include-all: true
+    remnawave:
+      include-proxies: false
+    hidden: true
+    proxies:
+      # LEAVE THIS LINE!
+
+  - name: Fallback
+    type: fallback
+    remnawave:
+      include-proxies: true
+      shuffle-proxies-order: true
+    url: https://www.gstatic.com/generate_204
+    interval: 300
+    hidden: true
+    lazy: true
+
+  - name: PROXY
+    remnawave:
+      include-proxies: true
+    type: select
+    hidden: true
+    proxies:
+      - VPN
+
+# ---------------------------------------------------------------------------
+# Rule providers
+# ---------------------------------------------------------------------------
+rule-providers:
+  # --- Private / LAN ---
+  geosite-private:
+    type: http
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/private.mrs
+    path: ./rule-sets/geosite-private.mrs
+    interval: 86400
+  geoip-private:
+    type: inline
+    behavior: classical
+    payload:
+      - IP-CIDR,0.0.0.0/8
+      - IP-CIDR,10.0.0.0/8
+      - IP-CIDR,100.64.0.0/10
+      - IP-CIDR,127.0.0.0/8
+      - IP-CIDR,169.254.0.0/16
+      - IP-CIDR,172.16.0.0/12
+      - IP-CIDR,192.0.0.0/24
+      - IP-CIDR,192.168.0.0/16
+      - IP-CIDR,198.18.0.0/15
+      - IP-CIDR,224.0.0.0/3
+      - IP-CIDR,fc00::/7
+      - IP-CIDR,fe80::/10
+      - IP-CIDR,ff00::/8
+
+  # --- Ad blocking ---
+  oisd_big:
+    type: http
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/legiz-ru/mihomo-rule-sets/main/oisd/big.mrs
+    path: ./oisd/big.mrs
+    interval: 86400
+
+  # --- Torrents ---
+  torrent-trackers:
+    type: http
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/legiz-ru/mihomo-rule-sets/main/other/torrent-trackers.mrs
+    path: ./rule-sets/torrent-trackers.mrs
+    interval: 86400
+  torrent-clients:
+    type: http
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/legiz-ru/mihomo-rule-sets/main/other/torrent-clients.yaml
+    path: ./rule-sets/torrent-clients.yaml
+    interval: 86400
+
+  # --- QUIC blocking ---
+  quic:
+    type: inline
+    behavior: classical
+    payload:
+      - AND,((NETWORK,udp),(DST-PORT,443))
+
+  # --- Blocked .ru/.su sites (need VPN despite being "Russian") ---
+  # These MUST be matched before geosite-ru / ru-inline rules.
+  refilter_domains:
+    type: http
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/legiz-ru/mihomo-rule-sets/main/re-filter/domain-rule.mrs
+    path: ./re-filter/domain-rule.mrs
+    interval: 86400
+    proxy: VPN
+  ru-inside:
+    type: http
+    behavior: classical
+    format: text
+    url: https://raw.githubusercontent.com/itdoginfo/allow-domains/main/Russia/inside-clashx.lst
+    path: ./rule-sets/ru-inside.lst
+    interval: 86400
+    proxy: VPN
+  ru-inline-banned:
+    type: inline
+    behavior: classical
+    payload:
+      - DOMAIN-SUFFIX,habr.com
+      - DOMAIN-SUFFIX,seasonvar.ru
+      - DOMAIN-SUFFIX,lib.social
+      - DOMAIN-SUFFIX,kemono.su
+      - DOMAIN-SUFFIX,jut.su
+      - DOMAIN-SUFFIX,theins.ru
+      - DOMAIN-SUFFIX,tvrain.ru
+      - DOMAIN-SUFFIX,echo.msk.ru
+      - DOMAIN-SUFFIX,novayagazeta.ru
+      - DOMAIN-SUFFIX,moscowtimes.ru
+
+  # --- Russian domestic (DIRECT) ---
+  ru-inline:
+    type: inline
+    behavior: classical
+    payload:
+      - DOMAIN-SUFFIX,2ip.ru
+      - DOMAIN-SUFFIX,yastatic.net
+      - DOMAIN-SUFFIX,yandex.net
+      - DOMAIN-SUFFIX,yandex.kz
+      - DOMAIN-SUFFIX,yandex.com
+      - DOMAIN-SUFFIX,yadi.sk
+      - DOMAIN-SUFFIX,mycdn.me
+      - DOMAIN-SUFFIX,vk.com
+      - DOMAIN-SUFFIX,.ru
+      - DOMAIN-SUFFIX,.su
+      - DOMAIN-SUFFIX,.by
+      - DOMAIN-SUFFIX,.ru.com
+      - DOMAIN-SUFFIX,.ru.net
+      - DOMAIN-KEYWORD,avito
+      - DOMAIN-KEYWORD,premier
+      - DOMAIN-KEYWORD,2gis
+      - DOMAIN-KEYWORD,kaspersky
+      - DOMAIN-KEYWORD,ozon
+      - DOMAIN-KEYWORD,wildberries
+      - DOMAIN-KEYWORD,aliexpress
+  geosite-ru:
+    type: http
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/Davoyan/mihomo-rule-sets/main/rules/category-ru.mrs
+    path: ./rule-sets/geosite-ru.mrs
+    interval: 86400
+  geoip-for-ru:
+    type: http
+    behavior: ipcidr
+    format: mrs
+    url: https://raw.githubusercontent.com/Davoyan/mihomo-rule-sets/main/ip-for-ru/lists/ips-for-ru.mrs
+    path: ./rule-sets/geoip-for-ru.mrs
+    interval: 86400
+  ru-apps:
+    type: http
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/legiz-ru/mihomo-rule-sets/main/other/ru-app-list.yaml
+    path: ./rule-sets/ru-apps.yaml
+    interval: 86400
+
+# ---------------------------------------------------------------------------
+# Rules — order matters! Higher = higher priority.
+# ---------------------------------------------------------------------------
+rules:
+  # DNS hijack
+  - DST-PORT,53,DNS-OUT
+
+  # Private/LAN → DIRECT
+  - RULE-SET,geoip-private,DIRECT,no-resolve
+  - RULE-SET,geosite-private,DIRECT
+
+  # Ad blocking
+  - RULE-SET,oisd_big,REJECT
+
+  # Torrents → DIRECT
+  - RULE-SET,torrent-clients,DIRECT
+  - RULE-SET,torrent-trackers,DIRECT
+  - PROCESS-NAME-REGEX,(?i).*torrent.*,DIRECT
+
+  # Block QUIC (forces HTTPS, better for proxying)
+  - RULE-SET,quic,REJECT
+
+  # IP checkers → VPN (so user sees VPN IP)
+  - DOMAIN,ipwho.is,VPN
+  - DOMAIN,api.myip.com,VPN
+  - DOMAIN,ipapi.co,VPN
+  - DOMAIN,ident.me,VPN
+  - DOMAIN,ipinfo.io,VPN
+  - DOMAIN,api.ip.sb,VPN
+  - DOMAIN,2ip.io,VPN
+
+  # --- Blocked .ru/.su sites → VPN (BEFORE RU domestic rules!) ---
+  - RULE-SET,ru-inside,VPN
+  - RULE-SET,refilter_domains,VPN
+  - RULE-SET,ru-inline-banned,VPN
+
+  # --- Russian domestic → DIRECT ---
+  - RULE-SET,ru-inline,RU
+  - RULE-SET,ru-apps,RU
+  - RULE-SET,geosite-ru,RU
+  - RULE-SET,geoip-for-ru,RU
+
+  # --- Everything else → VPN ---
+  - MATCH,VPN
