@@ -140,11 +140,22 @@
     comment: "Remnawave panel API - must be accessible from panel server"
   when: ansible_os_family == "Debian"
 
-- name: Configure firewall - Allow Shadowsocks protocol (optional)
+- name: Configure firewall - Allow Shadowsocks protocol TCP (optional)
   ufw:
     rule: allow
     port: "{{ remnawave_node_shadowsocks_port }}"
     proto: tcp
+    comment: "Shadowsocks 2022"
+  when:
+    - ansible_os_family == "Debian"
+    - remnawave_node_enable_shadowsocks | default(false)
+
+- name: Configure firewall - Allow Shadowsocks protocol UDP (optional)
+  ufw:
+    rule: allow
+    port: "{{ remnawave_node_shadowsocks_port }}"
+    proto: udp
+    comment: "Shadowsocks 2022"
   when:
     - ansible_os_family == "Debian"
     - remnawave_node_enable_shadowsocks | default(false)
@@ -234,6 +245,11 @@
         - Port: {{ remnawave_node_ws_port }}
         - Via Cloudflare CDN
 
+      {% if remnawave_node_enable_shadowsocks | default(false) %}
+      Shadowsocks 2022:
+        - Port: {{ remnawave_node_shadowsocks_port }} (TCP+UDP)
+
+      {% endif %}
       {% if node_health_check is defined and node_health_check.status is defined %}
       ✅ Node is responding on port {{ remnawave_node_app_port }} (Status: {{ node_health_check.status }})
       {% else %}

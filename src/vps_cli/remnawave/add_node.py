@@ -273,6 +273,8 @@ async def _create_hosts(
         is_ws = "ws" in network or "WS" in tag
         is_reality = "reality" in security or "REALITY" in tag
 
+        is_ss = inb.get("type", "").lower() == "shadowsocks" or "SS" in tag or "SHADOWSOCKS" in tag
+
         if is_ws:
             remark = f"ws-{suffix}"
             host_config = {
@@ -306,8 +308,22 @@ async def _create_hosts(
                 "securityLayer": "DEFAULT",
                 "nodes": [node_uuid],
             }
+        elif is_ss:
+            ss_port = inb.get("port", DEFAULT_SS_PORT)
+            remark = f"ss-{suffix}"
+            host_config = {
+                "inbound": {
+                    "configProfileUuid": profile_uuid,
+                    "configProfileInboundUuid": inb_uuid,
+                },
+                "remark": remark,
+                "address": ip,
+                "port": ss_port,
+                "securityLayer": "DEFAULT",
+                "nodes": [node_uuid],
+            }
         else:
-            _info(f"Skipping host for inbound '{inb.get('tag', '?')}' (not WS or Reality)")
+            _info(f"Skipping host for inbound '{inb.get('tag', '?')}' (not WS, Reality, or SS)")
             continue
 
         if remark in existing_by_remark:
