@@ -60,6 +60,7 @@ vps remnawave sync --apply       # apply state.yml to panel
 vps remnawave snapshot [--user]  # save Clash configs locally for offline use
 vps remnawave add-node           # guided node provisioning (--ip, --name, --country, --domain)
 vps remnawave gen-keys           # generate Reality keypair (--prefix, --node)
+vps remnawave template push      # upload Mihomo template to panel (--file, --name)
 ```
 
 ### Deploy Targets & Components

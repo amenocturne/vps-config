@@ -46,7 +46,27 @@ def cmd_remnawave_gen_keys(args: argparse.Namespace) -> int:
 def cmd_remnawave_sync(args: argparse.Namespace) -> int:
     from vps_cli.remnawave.sync import run_sync
 
-    return asyncio.run(run_sync(
-        mode=args.mode,
-        delete_missing=args.delete_missing,
-    ))
+    return asyncio.run(
+        run_sync(
+            mode=args.mode,
+            delete_missing=args.delete_missing,
+        )
+    )
+
+
+def cmd_remnawave_template_push(args: argparse.Namespace) -> int:
+    from pathlib import Path
+
+    from vps_cli import find_project_root
+    from vps_cli.remnawave.template import main as template_main
+
+    template_path = (
+        Path(args.file)
+        if args.file
+        else find_project_root() / "remnawave-config/templates/mihomo-ru-split.yaml"
+    )
+    if not template_path.exists():
+        print(f"Template not found: {template_path}")
+        return 1
+
+    return template_main(template_path=template_path, name=args.name)
