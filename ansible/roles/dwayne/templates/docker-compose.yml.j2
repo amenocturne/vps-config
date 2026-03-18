@@ -1,0 +1,11 @@
+services:
+  dwayne:
+    image: {{ dwayne_image }}
+    container_name: dwayne
+    restart: unless-stopped
+    ports:
+      - "{{ dwayne_port }}:8080"
+    environment:
+      - DWAYNE_CONFIG=/app/data/config.yml
+    volumes:
+      - {{ dwayne_dir }}/data:/app/data

@@ -1,0 +1,28 @@
+---
+- name: Create dwayne directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ dwayne_dir }}"
+    - "{{ dwayne_dir }}/data"
+
+- name: Deploy dwayne config
+  template:
+    src: config.yml.j2
+    dest: "{{ dwayne_dir }}/data/config.yml"
+    mode: '0644'
+  notify: restart dwayne
+
+- name: Deploy dwayne docker-compose
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ dwayne_dir }}/docker-compose.yml"
+    mode: '0644'
+  notify: restart dwayne
+
+- name: Start dwayne
+  community.docker.docker_compose_v2:
+    project_src: "{{ dwayne_dir }}"
+    state: present

@@ -1,0 +1,5 @@
+---
+- name: restart dwayne
+  community.docker.docker_compose_v2:
+    project_src: "{{ dwayne_dir }}"
+    state: restarted

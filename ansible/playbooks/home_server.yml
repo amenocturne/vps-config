@@ -13,3 +13,4 @@
     - security
     - { role: xray-bridge, tags: ['tunnel'] }
     - { role: radicale, tags: ['radicale'] }
+    - { role: dwayne, tags: ['dwayne'] }
