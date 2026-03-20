@@ -1,32 +1,32 @@
-# Cross-sheet data consolidation
+# Консолидация данных с нескольких листов
 
-## Problem
-Data lives across multiple sheets (e.g., 7 regional production sheets, 4 source data sheets).
-Need to build a summary that pulls and aggregates from all of them.
+## Задача
+Данные разбросаны по нескольким листам (например, 7 региональных листов производства,
+4 листа с исходными данными). Нужно построить сводку, которая собирает и агрегирует всё.
 
-## Solution
+## Решение
 
-### Method 1: Direct cross-sheet references
+### Способ 1: Прямые межлистовые ссылки
 ```
 ='Росстат_Пр-во ЦФО'!D5 + 'Росстат_Пр-во СЗФО'!D5 + ... + 'Росстат_Пр-во ДФО'!D5
 ```
-Good for a small number of sheets.
+Подходит для небольшого числа листов.
 
-### Method 2: SUM across sheet range
+### Способ 2: SUM по диапазону листов
 ```
-=SUM('Sheet1:Sheet7'!C5)
+=SUM('Лист1:Лист7'!C5)
 ```
-Sums cell C5 from all sheets between Sheet1 and Sheet7 (inclusive).
-Sheets must be contiguous in the workbook tab order.
+Суммирует ячейку C5 со всех листов от Лист1 до Лист7 (включительно).
+Листы должны идти подряд в порядке вкладок книги.
 
-### Method 3: INDIRECT for dynamic references
+### Способ 3: INDIRECT для динамических ссылок
 ```
 =IFERROR(INDIRECT(ADDRESS($O41, COLUMN(I$1), 1, 1, $C41), 1), "н/д")
 ```
-Builds a cell reference dynamically from a sheet name in column C.
-Most flexible but harder to debug.
+Строит ссылку на ячейку динамически из имени листа в столбце C.
+Самый гибкий, но сложнее отлаживать.
 
-## Key insight
-Method 2 (SUM across range) is the cleanest for uniform sheets. If you need to add
-a new region, just insert the sheet between the first and last named sheets —
-the formula automatically includes it.
+## Ключевой инсайт
+Способ 2 (SUM по диапазону) — самый чистый для однородных листов. При добавлении
+нового региона просто вставь лист между первым и последним указанными —
+формула автоматически его подхватит.

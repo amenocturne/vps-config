@@ -1,29 +1,29 @@
-# Unit conversion in formulas
+# Пересчёт единиц измерения в формулах
 
-## Problem
-Data comes in mixed units (kilograms and units/pieces in the same column).
-Need to normalize everything to one unit for aggregation.
+## Задача
+Данные приходят в смешанных единицах (килограммы и штуки в одном столбце).
+Нужно привести всё к одной единице для агрегации.
 
-## Solution
-Use a reference cell for the conversion factor, not a hardcoded number.
+## Решение
+Используй ячейку-ссылку для коэффициента пересчёта, а не захардкоженное число.
 
 ```
-; Put conversion factor in a named cell, e.g., B1 = 50 (kg per unit)
-; Then in the formula:
-=IF(unit_column="Kilogram", value / $B$1, value)
+; Коэффициент в отдельной ячейке, например B1 = 50 (кг в одной штуке)
+; В формуле:
+=IF(столбец_единиц="Kilogram", значение / $B$1, значение)
 ```
 
-Or when converting kg to tons:
+Или при пересчёте кг в тонны:
 ```
 =SUMIFS(...) / 1000
 ```
 
-Rules:
-- **Never hardcode constants** (50, 1000, 90) directly in formulas
-- Put them in a clearly labeled cell and reference it with `$`
-- This makes the model auditable and easy to change
+Правила:
+- **Никогда не хардкодь константы** (50, 1000, 90) прямо в формулы
+- Выноси их в подписанную ячейку и ссылайся через `$`
+- Это делает модель проверяемой и легко изменяемой
 
-## Key insight
-Hardcoded "magic numbers" in formulas are the #1 source of errors in financial models.
-If the conversion factor changes (e.g., 50 kg → 45 kg), you'd have to find and update
-every formula. A single reference cell fixes all of them at once.
+## Ключевой инсайт
+Захардкоженные «магические числа» в формулах — источник ошибок №1 в финансовых моделях.
+Если коэффициент изменится (например, 50 кг → 45 кг), придётся искать и обновлять
+каждую формулу. Одна ячейка-ссылка исправляет все разом.

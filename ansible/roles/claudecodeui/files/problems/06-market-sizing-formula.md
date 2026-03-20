@@ -1,40 +1,40 @@
-# Market sizing: Production + Import - Export
+# Расчёт объёма рынка: Производство + Импорт - Экспорт
 
-## Problem
-Calculate total market size for a product category in a country, then determine
-company market share.
+## Задача
+Рассчитать общий объём рынка для категории продуктов в стране,
+затем определить долю компании на рынке.
 
-## Solution
+## Решение
 
-### Market size formula
+### Формула объёма рынка
 ```
-Market Size = Domestic Production + Import - Export
+Объём рынка = Внутреннее производство + Импорт - Экспорт
 ```
 
-In Excel:
+В Excel:
 ```
 =D10 + D4 - D7
 ```
-Where D10 = production, D4 = import, D7 = export (all in same units).
+Где D10 = производство, D4 = импорт, D7 = экспорт (всё в одних единицах).
 
-### Market share
+### Доля рынка
 ```
 ='Продажи Компании'!K22 / D13
 ```
-Company sales divided by total market size.
+Продажи компании делённые на общий объём рынка.
 
-### Monetary values
-For revenue-based market size, multiply volumes by prices:
+### Стоимостные показатели
+Для рыночного объёма в деньгах — умножай физические объёмы на цены:
 ```
 =D10 * Росстат_Цены!C5
 ```
 
-### Data sources (Russian market context)
-- **Production**: Rosstat (Росстат) — by federal district, monthly
-- **Import/Export**: Customs declarations (Декларации) — by country, monthly
-- **Prices**: Rosstat producer prices or calculated weighted averages from customs data
+### Источники данных (контекст российского рынка)
+- **Производство**: Росстат — по федеральным округам, помесячно
+- **Импорт/Экспорт**: Таможенные декларации — по странам, помесячно
+- **Цены**: Цены производителей Росстата или средневзвешенные из таможенных данных
 
-## Key insight
-Always verify that all components use the same units (tons vs kg, USD vs RUB)
-and the same time period. A common mistake is mixing annual production with
-monthly import data.
+## Ключевой инсайт
+Всегда проверяй, что все компоненты в одних единицах (тонны vs кг, USD vs руб.)
+и за один период. Частая ошибка — смешивание годового производства
+с месячными данными по импорту.

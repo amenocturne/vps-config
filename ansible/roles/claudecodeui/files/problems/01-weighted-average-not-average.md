@@ -1,27 +1,27 @@
-# Weighted average vs AVERAGE()
+# Средневзвешенное vs AVERAGE()
 
-## Problem
-When calculating average prices across countries/products with different volumes,
-using `=AVERAGE(prices)` gives a wildly incorrect result.
+## Задача
+При расчёте средних цен по странам/продуктам с разными объёмами
+использование `=AVERAGE(цены)` даёт кардинально неправильный результат.
 
-Example: country A has price 0.01 with volume 500, country B has price 220 with volume 10.
-AVERAGE gives 110, but the actual weighted average is 12.1.
+Пример: страна А — цена 0.01 при объёме 500, страна Б — цена 220 при объёме 10.
+AVERAGE даёт 110, а реальное средневзвешенное — 12.1.
 
-## Solution
-Always use weighted average: **Total Value / Total Quantity**.
+## Решение
+Всегда используй средневзвешенное: **Общая стоимость / Общий объём**.
 
 ```
-= SUMPRODUCT(prices, quantities) / SUM(quantities)
+= SUMPRODUCT(цены, объёмы) / SUM(объёмы)
 ```
 
-Or when working with separate value and quantity columns:
+Или при работе с отдельными столбцами стоимости и количества:
 ```
-= SUM(value_column) / SUM(quantity_column)
+= SUM(столбец_стоимости) / SUM(столбец_количества)
 ```
 
-Never use AVERAGE() or AVERAGEIF() for prices — they treat all rows equally regardless of volume.
+Никогда не используй AVERAGE() или AVERAGEIF() для цен — они считают все строки равнозначными.
 
-## Key insight
-AVERAGE() is almost always wrong for prices and rates. If rows represent different volumes,
-a small-volume row with an extreme price will distort the result.
-The only time AVERAGE is correct is when all rows have equal weight.
+## Ключевой инсайт
+AVERAGE() почти всегда неверен для цен и ставок. Если строки представляют разные объёмы,
+строка с маленьким объёмом и экстремальной ценой исказит результат.
+AVERAGE корректен только когда все строки имеют одинаковый вес.

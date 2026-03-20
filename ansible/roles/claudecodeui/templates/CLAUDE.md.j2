@@ -1,139 +1,139 @@
-# Excel & Analytics Workspace
+# Рабочее пространство: Excel и аналитика
 
-## Environment
+## Окружение
 
-- **Python**: use `uv run` for all Python scripts (never raw `python`)
-- **Excel libraries**: openpyxl (read/write .xlsx), pandas (data manipulation), xlsxwriter (advanced formatting)
-- **Output directory**: save all generated files to `./output/`
-- **Input files**: user uploads go to the workspace root — read them from there
+- **Python**: всегда используй `uv run` (никогда голый `python`)
+- **Библиотеки для Excel**: openpyxl (чтение/запись .xlsx), pandas (работа с данными), xlsxwriter (форматирование)
+- **Папка для результатов**: сохраняй все сгенерированные файлы в `./output/`
+- **Входные файлы**: загрузки пользователя появляются в корне workspace — читай оттуда
 
-## Context
+## Контекст
 
-This workspace is used for **consulting-style analytical work**: market analysis, financial modeling,
-data consolidation from government/customs sources. The domain is Russian market analytics
-(Rosstat, customs declarations, P&L models). Formulas and data labels may be in Russian.
+Это рабочее пространство для **консалтинговой аналитики**: анализ рынка, финансовое моделирование,
+консолидация данных из государственных/таможенных источников. Домен — аналитика российского рынка
+(Росстат, таможенные декларации, модели P&L). Формулы и заголовки данных на русском языке.
 
-## Excel Formula Rules
+## Правила работы с формулами Excel
 
-### Core principles
-- **Write formulas as strings** — never compute results in Python unless explicitly asked
-- **SUMIFS is the primary analytical tool** — use it for any multi-criteria aggregation
-- **Weighted average, NEVER AVERAGE()** for prices/rates: `=SUM(values)/SUM(quantities)`
-- **No hardcoded constants in formulas** — put conversion factors (1000, 50, 90) in reference cells
-- **Absolute references ($)** on ranges that shouldn't move when stretching:
-  - `$O:$O` — fully locked (sum/criteria ranges)
-  - `N$1` — row locked (criteria from header, moves across columns)
-  - `$F17` — column locked (criteria from label column, moves down rows)
+### Основные принципы
+- **Формулы пишутся как строки** — никогда не вычисляй результат в Python, если не просят явно
+- **SUMIFS — основной инструмент анализа** — используй для любой агрегации с несколькими критериями
+- **Средневзвешенное, НИКОГДА AVERAGE()** для цен/ставок: `=SUM(значения)/SUM(объёмы)`
+- **Никаких захардкоженных констант** — коэффициенты пересчёта (1000, 50, 90) выноси в отдельные ячейки
+- **Абсолютные ссылки ($)** на диапазонах, которые не должны сдвигаться при растягивании:
+  - `$O:$O` — полная фиксация (диапазоны суммирования/критериев)
+  - `N$1` — фиксация строки (критерий из заголовка, сдвигается по столбцам)
+  - `$F17` — фиксация столбца (критерий из колонки меток, сдвигается вниз)
 
-### Function preference order
-1. **SUMIFS/COUNTIFS** — for filtering and aggregating (not VLOOKUP)
-2. **INDEX+MATCH** — for lookups (more flexible than VLOOKUP)
-3. **VLOOKUP** — only for simple exact-match lookups
-4. **IFERROR** — wrap division and lookups to handle #DIV/0! and #REF!
-5. **SUM across sheets** — `=SUM('Sheet1:Sheet7'!C5)` for multi-sheet consolidation
-6. **INDIRECT+ADDRESS** — for dynamic sheet references (advanced)
+### Приоритет функций
+1. **SUMIFS/COUNTIFS** — для фильтрации и агрегации (не VLOOKUP)
+2. **INDEX+MATCH** — для поиска (гибче VLOOKUP)
+3. **VLOOKUP** — только для простого точного поиска
+4. **IFERROR** — оборачивай деление и поиск для обработки #DIV/0! и #REF!
+5. **SUM по листам** — `=SUM('Лист1:Лист7'!C5)` для консолидации нескольких листов
+6. **INDIRECT+ADDRESS** — для динамических ссылок на листы (продвинутый уровень)
 
-### Model structure
-- Source data stays on separate sheets, untouched
-- Calculation sheets contain only references and aggregation formulas
-- Don't insert calculated columns inside data tables — build alongside
-- Hierarchical rollup: detail → subtotal → total (using SUM of subtotals, not re-summing details)
+### Структура модели
+- Исходные данные остаются на отдельных листах, нетронутыми
+- Расчётные листы содержат только ссылки и формулы агрегации
+- Не вставляй расчётные столбцы внутрь таблиц с данными — строй рядом
+- Иерархическая свёртка: детали → промежуточный итог → итог (SUM промежуточных, а не пересуммирование деталей)
 
-### Common patterns
+### Типовые паттерны
 
-**Multi-criteria sum from declarations:**
+**Многокритериальная сумма из деклараций:**
 ```
-=SUMIFS($O:$O, $C:$C, year, $D:$D, month, $E:$E, direction, $L:$L, product) / 1000
-```
-
-**Market size:**
-```
-= Production + Import - Export
+=SUMIFS($O:$O, $C:$C, год, $D:$D, месяц, $E:$E, направление, $L:$L, продукт) / 1000
 ```
 
-**Weighted average price:**
+**Объём рынка:**
 ```
-= Total_Value / Total_Volume
-```
-
-**P&L waterfall:**
-```
-Revenue      = Volume × Price
-COGS         = Volume × Cost
-Gross Profit = Revenue - COGS
-Gross Margin = 1 - COGS / Revenue
+= Производство + Импорт - Экспорт
 ```
 
-## Working with openpyxl
+**Средневзвешенная цена:**
+```
+= Общая_стоимость / Общий_объём
+```
+
+**P&L каскад:**
+```
+Выручка          = Объём × Цена
+Себестоимость    = Объём × Затраты
+Валовая прибыль  = Выручка - Себестоимость
+Валовая маржа    = 1 - Себестоимость / Выручка
+```
+
+## Работа с openpyxl
 
 ```python
 import openpyxl
 
-# Create workbook with formulas
+# Создание книги с формулами
 wb = openpyxl.Workbook()
 ws = wb.active
 ws['A1'] = '=SUM(B1:B10)'
 wb.save('output/result.xlsx')
 
-# Read existing workbook (preserve formulas)
+# Чтение существующей книги (с формулами)
 wb = openpyxl.load_workbook('input.xlsx')
 
-# Read with computed values (no formulas)
+# Чтение с вычисленными значениями (без формул)
 wb = openpyxl.load_workbook('input.xlsx', data_only=True)
 ```
 
-When generating multi-sheet workbooks:
-- Use `wb.create_sheet('Name')` for each data source
-- Cross-sheet references work: `ws['A1'] = "='Sheet2'!B5"`
-- Set column widths: `ws.column_dimensions['A'].width = 15`
-- Number formats: `cell.number_format = '#,##0.0'` or `'0.0%'`
+При создании многолистовых книг:
+- `wb.create_sheet('Название')` для каждого источника данных
+- Межлистовые ссылки работают: `ws['A1'] = "='Лист2'!B5"`
+- Ширина столбцов: `ws.column_dimensions['A'].width = 15`
+- Форматы чисел: `cell.number_format = '#,##0.0'` или `'0.0%'`
 
-For data analysis with formatted output, use pandas + xlsxwriter:
+Для анализа данных с форматированным выводом — pandas + xlsxwriter:
 ```python
 import pandas as pd
 df = pd.read_excel('input.xlsx')
 with pd.ExcelWriter('output/analysis.xlsx', engine='xlsxwriter') as writer:
-    df.to_excel(writer, sheet_name='Data', index=False)
+    df.to_excel(writer, sheet_name='Данные', index=False)
 ```
 
-## Problems & Solutions
+## Задачи и решения
 
-**Always check `./problems/` first** when the user describes a task.
-Each file describes a solved problem pattern — reuse the approach, don't reinvent.
+**Всегда проверяй `./problems/` первым**, когда пользователь описывает задачу.
+Каждый файл описывает решённый паттерн — используй подход, не изобретай заново.
 
-### Source files
+### Исходные файлы
 
-`./source-files/` contains the original Excel workbooks and PDF from past assignments:
-- `ДЗ #1.xlsx` / `ДЗ #1 (1).xlsx` — P&L homework (solved / blank)
-- `ДЗ #2.xlsx` / `ДЗ #2 (1).xlsx` — market analysis homework (solved / blank)
-- `Excel_тест_12.03.2026.xlsx` — timed test (3 tasks)
-- `Excel_тест_3 задание решение.xlsx` — test task 3 solution
-- `Исходные данные.xlsx` — source data (import volumes/prices by country)
-- `Тренинг_Excel_24.02.2026.xlsx` — training material (20 sheets, full curriculum)
-- `Тест_Excel_Feedback.pdf` — test feedback with common mistakes
+`./source-files/` содержит оригинальные Excel-книги и PDF из прошлых заданий:
+- `ДЗ #1.xlsx` / `ДЗ #1 (1).xlsx` — домашка по P&L (решение / пустой)
+- `ДЗ #2.xlsx` / `ДЗ #2 (1).xlsx` — домашка по анализу рынка (решение / пустой)
+- `Excel_тест_12.03.2026.xlsx` — тест на время (3 задания)
+- `Excel_тест_3 задание решение.xlsx` — решение 3-го задания теста
+- `Исходные данные.xlsx` — исходные данные (объёмы/цены импорта по странам)
+- `Тренинг_Excel_24.02.2026.xlsx` — учебные материалы (20 листов, полный курс)
+- `Тест_Excel_Feedback.pdf` — обратная связь по тесту с типичными ошибками
 
-When a task is similar to a past assignment, **open and analyze the relevant source file**
-with openpyxl to see exactly how it was solved — formulas, structure, layout.
-Use `data_only=True` to see computed values, or without it to see formulas.
+Когда задача похожа на прошлое задание, **открой и проанализируй соответствующий файл**
+через openpyxl — посмотри формулы, структуру, компоновку.
+Используй `data_only=True` для вычисленных значений, без него — для формул.
 
-To save a new problem:
+Для сохранения нового решения:
 ```markdown
-# Short problem title
+# Краткое название задачи
 
-## Problem
-Specific inputs, expected vs actual behavior.
+## Задача
+Конкретные входные данные, ожидаемое vs фактическое поведение.
 
-## Solution
-Step-by-step with formulas/code.
+## Решение
+Пошаговое описание с формулами/кодом.
 
-## Key insight
-The non-obvious thing that cracked it.
+## Ключевой инсайт
+Неочевидная вещь, которая помогла решить.
 ```
 
-## Communication
+## Стиль общения
 
-- Be direct — lead with the formula or code, explain after
-- Show the actual Excel formula, not a description of it
-- State assumptions explicitly when data is ambiguous
-- After generating a file: state path, sheet names, and what each contains
-- Russian labels in formulas and headers are fine — use them when the user does
+- Будь прямым — сначала формула или код, потом объяснение
+- Показывай саму формулу Excel, а не описание того, что она делает
+- Явно указывай допущения, когда данные неоднозначны
+- После генерации файла: укажи путь, названия листов и что на каждом содержится
+- Русские названия в формулах и заголовках — это норма, используй их

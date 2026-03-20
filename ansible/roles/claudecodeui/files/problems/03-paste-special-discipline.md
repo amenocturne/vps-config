@@ -1,25 +1,25 @@
-# Paste Special: avoiding style and link pollution
+# Специальная вставка: защита от мусора стилей и ссылок
 
-## Problem
-Copying data from another workbook with Ctrl+V brings unwanted formatting, styles,
-and external links. The destination file becomes bloated, slow, and shows
-"Update Links?" prompts on every open.
+## Задача
+Копирование данных из другой книги через Ctrl+V тащит за собой форматирование, стили
+и внешние ссылки. Файл-получатель раздувается, тормозит и показывает
+«Обновить ссылки?» при каждом открытии.
 
-## Solution
-Three paste modes to use instead of Ctrl+V:
+## Решение
+Три режима вставки вместо Ctrl+V:
 
-1. **Values only** (Ctrl+Shift+V → Values): strips formulas, formatting, links.
-   Use when you just need the data.
+1. **Только значения** (Ctrl+Shift+V → Значения): убирает формулы, форматирование, ссылки.
+   Используй, когда нужны только данные.
 
-2. **Formulas only**: keeps formulas but strips formatting.
-   If formulas reference another workbook, break links after pasting:
-   Data → Edit Links → Break Link.
+2. **Только формулы**: сохраняет формулы, но убирает форматирование.
+   Если формулы ссылаются на другую книгу, разорви связи после вставки:
+   Данные → Изменить связи → Разорвить связь.
 
-3. **Format only**: copies only cell formatting (colors, borders, number formats).
+3. **Только формат**: копирует только оформление ячеек (цвета, границы, числовые форматы).
 
-Never move/copy entire sheets between workbooks — it carries all styles with it.
+Никогда не перемещай/копируй целые листы между книгами — это переносит все стили.
 
-## Key insight
-External links are the most insidious problem. They're invisible until someone opens
-the file and gets "Update Links?" or sees #REF! errors. Always break links
-immediately after pasting formulas from external sources.
+## Ключевой инсайт
+Внешние ссылки — самая коварная проблема. Они невидимы, пока кто-то не откроет
+файл и не увидит «Обновить ссылки?» или ошибки #REF!. Всегда разрывай связи
+сразу после вставки формул из внешних источников.

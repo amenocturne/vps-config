@@ -1,46 +1,46 @@
-# P&L waterfall with hierarchical aggregation
+# P&L каскад с иерархической агрегацией
 
-## Problem
-Build a consolidated financial result (P&L) from source data across multiple sheets,
-with hierarchical rollups: brand → segment → channel → category → total.
+## Задача
+Построить консолидированный финансовый результат (P&L) из исходных данных на нескольких листах,
+с иерархическими свёртками: бренд → сегмент → канал → категория → итого.
 
-## Solution
+## Решение
 
-### Structure
+### Структура
 ```
-Grand Total (Dogs + Cats)
-├── Dogs Total (Online + Offline)
-│   ├── Dogs Online
-│   │   ├── Economy (10 brands, SUM)
-│   │   └── Premium (10 brands, SUM)
-│   └── Dogs Offline
-│       ├── Economy (10 brands, SUM)
-│       └── Premium (10 brands, SUM)
-└── Cats Total (same structure)
-```
-
-### P&L lines per product per month
-```
-Revenue       = Volume (tons) × Price (RUB/kg) × 1000
-COGS          = Volume (tons) × Cost (RUB/kg) × 1000
-Gross Profit  = Revenue - COGS
-Gross Margin  = 1 - COGS / Revenue
+Общий итог (Собаки + Кошки)
+├── Собаки итого (Онлайн + Офлайн)
+│   ├── Собаки Онлайн
+│   │   ├── Эконом (10 брендов, SUM)
+│   │   └── Премиум (10 брендов, SUM)
+│   └── Собаки Офлайн
+│       ├── Эконом (10 брендов, SUM)
+│       └── Премиум (10 брендов, SUM)
+└── Кошки итого (аналогичная структура)
 ```
 
-### Formula pattern
-- Brand level: `='source_sheet'!C7` (cross-sheet link to source data)
-- Segment level: `=SUM(D8:D17)` (10 brands)
-- Channel level: `=D6+D29` (economy + premium)
-- Category level: `=D5+D53` (online + offline)
-- Grand total: `=D4+D100` (dogs + cats)
+### Строки P&L по продукту за месяц
+```
+Выручка          = Объём (тонны) × Цена (руб/кг) × 1000
+Себестоимость    = Объём (тонны) × Затраты (руб/кг) × 1000
+Валовая прибыль  = Выручка - Себестоимость
+Валовая маржа    = 1 - Себестоимость / Выручка
+```
 
-### Key rules
-- Source data stays untouched on separate sheets
-- Calculation sheet only contains references and SUM
-- Formulas stretch horizontally for months (Jan-Dec)
-- Annual total = SUM of monthly cells
+### Паттерн формул
+- Уровень бренда: `='продажи натураль.'!C7` (межлистовая ссылка на исходные данные)
+- Уровень сегмента: `=SUM(D8:D17)` (10 брендов)
+- Уровень канала: `=D6+D29` (эконом + премиум)
+- Уровень категории: `=D5+D53` (онлайн + офлайн)
+- Общий итог: `=D4+D100` (собаки + кошки)
 
-## Key insight
-The entire 687-row P&L is built with only two formula types: cross-sheet references
-and SUM. No VLOOKUP, no IF. Simplicity in formula choice makes the model auditable.
-Keep calculated columns separate from source data tables.
+### Ключевые правила
+- Исходные данные остаются нетронутыми на отдельных листах
+- Расчётный лист содержит только ссылки и SUM
+- Формулы растягиваются горизонтально по месяцам (янв-дек)
+- Годовой итог = SUM месячных ячеек
+
+## Ключевой инсайт
+Весь P&L на 687 строк построен всего двумя типами формул: межлистовые ссылки и SUM.
+Никаких VLOOKUP, никаких IF. Простота в выборе формул делает модель проверяемой.
+Расчётные столбцы — отдельно от таблиц с исходными данными.

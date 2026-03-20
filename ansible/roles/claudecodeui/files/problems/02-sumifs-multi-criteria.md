@@ -1,28 +1,28 @@
-# SUMIFS for multi-criteria filtering
+# SUMIFS для многокритериальной фильтрации
 
-## Problem
-Need to sum values from large datasets (e.g., 14,000+ customs declarations) filtered by
-multiple criteria: year, month, direction (import/export), product type.
+## Задача
+Нужно суммировать значения из больших массивов данных (например, 14 000+ таможенных деклараций)
+с фильтрацией по нескольким критериям: год, месяц, направление (импорт/экспорт), тип продукта.
 
-## Solution
-SUMIFS with absolute-referenced ranges and relative criteria:
+## Решение
+SUMIFS с абсолютными ссылками на диапазоны и относительными критериями:
 
 ```
 =SUMIFS(
-  Декларации!$O:$O,        ; sum range (weight) — always $-locked
-  Декларации!$C:$C, N$1,   ; criterion 1: year (from header row)
-  Декларации!$D:$D, N$2,   ; criterion 2: month (from header row)
-  Декларации!$E:$E, $F17,  ; criterion 3: direction (from label column)
-  Декларации!$L:$L, $B17   ; criterion 4: product type (from label column)
+  Декларации!$O:$O,        ; диапазон суммирования (вес) — всегда $-фиксация
+  Декларации!$C:$C, N$1,   ; критерий 1: год (из строки заголовка)
+  Декларации!$D:$D, N$2,   ; критерий 2: месяц (из строки заголовка)
+  Декларации!$E:$E, $F17,  ; критерий 3: направление (из столбца меток)
+  Декларации!$L:$L, $B17   ; критерий 4: тип продукта (из столбца меток)
 ) / 1000
 ```
 
-Key rules:
-- **Sum range and criteria ranges**: always `$` (absolute) — they don't move when stretching
-- **Criteria values**: lock the axis that stays fixed. `N$1` locks row (moves across columns), `$F17` locks column (moves down rows)
-- Divide by 1000 for unit conversion (kg → tons) directly in the formula
+Ключевые правила:
+- **Диапазон суммирования и диапазоны критериев**: всегда `$` (абсолютные) — не сдвигаются при растягивании
+- **Значения критериев**: фиксируй ту ось, которая должна оставаться на месте. `N$1` фиксирует строку (сдвигается по столбцам), `$F17` фиксирует столбец (сдвигается по строкам)
+- Деление на 1000 для пересчёта единиц (кг → тонны) прямо в формуле
 
-## Key insight
-The `$`-locking pattern is what makes SUMIFS stretchable. Lock ranges fully (`$O:$O`),
-lock criteria partially based on which direction the formula will be copied.
-Use F4 to cycle: full lock → row only → column only → unlocked.
+## Ключевой инсайт
+Паттерн `$`-фиксации — то, что делает SUMIFS растягиваемой. Фиксируй диапазоны полностью (`$O:$O`),
+критерии — частично, в зависимости от направления копирования.
+F4 для переключения: полная фиксация → только строка → только столбец → без фиксации.
