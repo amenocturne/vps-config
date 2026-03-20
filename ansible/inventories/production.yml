@@ -24,7 +24,7 @@ all:
     wishlist_image: "ghcr.io/cmintey/wishlist:latest"
 
     # Claude Code UI configuration
-    claudecodeui_server_ip: "64.111.93.196"
+    claudecodeui_server_ip: "CHANGE_ME"
     claudecodeui_port: 3001
 
     # Remnawave configuration
