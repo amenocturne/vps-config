@@ -1,0 +1,5 @@
+---
+cloudcli_port: 3001
+cloudcli_directory: /opt/claudecodeui
+cloudcli_user: claudecodeui
+cloudcli_node_major: "22"

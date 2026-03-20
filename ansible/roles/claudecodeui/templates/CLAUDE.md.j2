@@ -1,0 +1,139 @@
+# Excel & Analytics Workspace
+
+## Environment
+
+- **Python**: use `uv run` for all Python scripts (never raw `python`)
+- **Excel libraries**: openpyxl (read/write .xlsx), pandas (data manipulation), xlsxwriter (advanced formatting)
+- **Output directory**: save all generated files to `./output/`
+- **Input files**: user uploads go to the workspace root — read them from there
+
+## Context
+
+This workspace is used for **consulting-style analytical work**: market analysis, financial modeling,
+data consolidation from government/customs sources. The domain is Russian market analytics
+(Rosstat, customs declarations, P&L models). Formulas and data labels may be in Russian.
+
+## Excel Formula Rules
+
+### Core principles
+- **Write formulas as strings** — never compute results in Python unless explicitly asked
+- **SUMIFS is the primary analytical tool** — use it for any multi-criteria aggregation
+- **Weighted average, NEVER AVERAGE()** for prices/rates: `=SUM(values)/SUM(quantities)`
+- **No hardcoded constants in formulas** — put conversion factors (1000, 50, 90) in reference cells
+- **Absolute references ($)** on ranges that shouldn't move when stretching:
+  - `$O:$O` — fully locked (sum/criteria ranges)
+  - `N$1` — row locked (criteria from header, moves across columns)
+  - `$F17` — column locked (criteria from label column, moves down rows)
+
+### Function preference order
+1. **SUMIFS/COUNTIFS** — for filtering and aggregating (not VLOOKUP)
+2. **INDEX+MATCH** — for lookups (more flexible than VLOOKUP)
+3. **VLOOKUP** — only for simple exact-match lookups
+4. **IFERROR** — wrap division and lookups to handle #DIV/0! and #REF!
+5. **SUM across sheets** — `=SUM('Sheet1:Sheet7'!C5)` for multi-sheet consolidation
+6. **INDIRECT+ADDRESS** — for dynamic sheet references (advanced)
+
+### Model structure
+- Source data stays on separate sheets, untouched
+- Calculation sheets contain only references and aggregation formulas
+- Don't insert calculated columns inside data tables — build alongside
+- Hierarchical rollup: detail → subtotal → total (using SUM of subtotals, not re-summing details)
+
+### Common patterns
+
+**Multi-criteria sum from declarations:**
+```
+=SUMIFS($O:$O, $C:$C, year, $D:$D, month, $E:$E, direction, $L:$L, product) / 1000
+```
+
+**Market size:**
+```
+= Production + Import - Export
+```
+
+**Weighted average price:**
+```
+= Total_Value / Total_Volume
+```
+
+**P&L waterfall:**
+```
+Revenue      = Volume × Price
+COGS         = Volume × Cost
+Gross Profit = Revenue - COGS
+Gross Margin = 1 - COGS / Revenue
+```
+
+## Working with openpyxl
+
+```python
+import openpyxl
+
+# Create workbook with formulas
+wb = openpyxl.Workbook()
+ws = wb.active
+ws['A1'] = '=SUM(B1:B10)'
+wb.save('output/result.xlsx')
+
+# Read existing workbook (preserve formulas)
+wb = openpyxl.load_workbook('input.xlsx')
+
+# Read with computed values (no formulas)
+wb = openpyxl.load_workbook('input.xlsx', data_only=True)
+```
+
+When generating multi-sheet workbooks:
+- Use `wb.create_sheet('Name')` for each data source
+- Cross-sheet references work: `ws['A1'] = "='Sheet2'!B5"`
+- Set column widths: `ws.column_dimensions['A'].width = 15`
+- Number formats: `cell.number_format = '#,##0.0'` or `'0.0%'`
+
+For data analysis with formatted output, use pandas + xlsxwriter:
+```python
+import pandas as pd
+df = pd.read_excel('input.xlsx')
+with pd.ExcelWriter('output/analysis.xlsx', engine='xlsxwriter') as writer:
+    df.to_excel(writer, sheet_name='Data', index=False)
+```
+
+## Problems & Solutions
+
+**Always check `./problems/` first** when the user describes a task.
+Each file describes a solved problem pattern — reuse the approach, don't reinvent.
+
+### Source files
+
+`./source-files/` contains the original Excel workbooks and PDF from past assignments:
+- `ДЗ #1.xlsx` / `ДЗ #1 (1).xlsx` — P&L homework (solved / blank)
+- `ДЗ #2.xlsx` / `ДЗ #2 (1).xlsx` — market analysis homework (solved / blank)
+- `Excel_тест_12.03.2026.xlsx` — timed test (3 tasks)
+- `Excel_тест_3 задание решение.xlsx` — test task 3 solution
+- `Исходные данные.xlsx` — source data (import volumes/prices by country)
+- `Тренинг_Excel_24.02.2026.xlsx` — training material (20 sheets, full curriculum)
+- `Тест_Excel_Feedback.pdf` — test feedback with common mistakes
+
+When a task is similar to a past assignment, **open and analyze the relevant source file**
+with openpyxl to see exactly how it was solved — formulas, structure, layout.
+Use `data_only=True` to see computed values, or without it to see formulas.
+
+To save a new problem:
+```markdown
+# Short problem title
+
+## Problem
+Specific inputs, expected vs actual behavior.
+
+## Solution
+Step-by-step with formulas/code.
+
+## Key insight
+The non-obvious thing that cracked it.
+```
+
+## Communication
+
+- Be direct — lead with the formula or code, explain after
+- Show the actual Excel formula, not a description of it
+- State assumptions explicitly when data is ambiguous
+- After generating a file: state path, sheet names, and what each contains
+- Russian labels in formulas and headers are fine — use them when the user does

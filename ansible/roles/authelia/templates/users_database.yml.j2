@@ -6,3 +6,13 @@ users:
     groups:
       - admins
       - dev
+{% if authelia_extra_users is defined %}
+{% for user in authelia_extra_users %}
+  {{ user.username }}:
+    displayname: "{{ user.displayname }}"
+    password: "{{ user.password_hash }}"
+    email: {{ user.email }}
+    groups:
+      - users
+{% endfor %}
+{% endif %}

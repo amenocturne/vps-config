@@ -220,6 +220,26 @@ SCHEMA = [
         ],
     },
     {
+        "section": "Claude Code UI",
+        "keys": [
+            {
+                "name": "claudecodeui_anthropic_api_key",
+                "description": "Anthropic API key for Claude Code UI",
+                "used_by": ["claudecodeui playbook"],
+                "default": "",
+                "generate": None,
+            },
+            {
+                "name": "authelia_extra_users",
+                "description": "Additional Authelia users (list of {username, displayname, email, password_hash})",
+                "used_by": ["site playbook", "authelia role"],
+                "default": None,
+                "generate": "docker run --rm authelia/authelia:latest authelia crypto hash generate --password 'password'",
+                "type": "dict",
+            },
+        ],
+    },
+    {
         "section": "Authelia",
         "keys": [
             {

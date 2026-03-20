@@ -1,0 +1,10 @@
+all:
+  hosts:
+    claudecodeui:
+      ansible_host: "64.111.93.196"
+      ansible_user: root
+      ansible_ssh_private_key_file: ~/.ssh/tmp_claude_bitlaunch
+      ansible_python_interpreter: /usr/bin/python3
+
+  vars:
+    main_vps_ip: "168.100.11.130"
