@@ -224,9 +224,9 @@ SCHEMA = [
         "keys": [
             {
                 "name": "claudecodeui_anthropic_api_key",
-                "description": "Anthropic API key for Claude Code UI",
+                "description": "Anthropic API key for Claude Code UI (optional — can use CLI login instead)",
                 "used_by": ["claudecodeui playbook"],
-                "default": "",
+                "default": "optional",
                 "generate": None,
             },
             {
