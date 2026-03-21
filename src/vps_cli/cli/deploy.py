@@ -71,7 +71,7 @@ def cmd_deploy(args: argparse.Namespace) -> int:
     # Secrets check before actual deploy
     from vps_cli.secrets import check_secrets
 
-    if check_secrets() != 0:
+    if check_secrets(target=target_name) != 0:
         print("\nSecrets check failed. Run 'vps secrets init' or 'vps setup' first.", file=sys.stderr)
         return 1
 

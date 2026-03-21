@@ -14,7 +14,7 @@ SCHEMA = [
             {
                 "name": "remnawave_panel_url",
                 "description": "Panel URL for API access",
-                "used_by": ["remnawave playbook", "export-config", "sync-config"],
+                "used_by": ["remnawave", "export-config", "sync-config"],
                 "default": "https://panel.amenocturne.space",
                 "generate": None,
             },
@@ -28,35 +28,35 @@ SCHEMA = [
             {
                 "name": "jwt_auth_secret",
                 "description": "JWT auth secret for panel backend",
-                "used_by": ["remnawave playbook"],
+                "used_by": ["remnawave"],
                 "default": "",
                 "generate": "openssl rand -hex 32",
             },
             {
                 "name": "jwt_api_tokens_secret",
                 "description": "JWT secret for API token signing",
-                "used_by": ["remnawave playbook"],
+                "used_by": ["remnawave"],
                 "default": "",
                 "generate": "openssl rand -hex 32",
             },
             {
                 "name": "metrics_pass",
                 "description": "Password for metrics endpoint auth",
-                "used_by": ["remnawave playbook"],
+                "used_by": ["remnawave"],
                 "default": "",
                 "generate": "openssl rand -hex 10",
             },
             {
                 "name": "webhook_secret",
                 "description": "Webhook signing secret",
-                "used_by": ["remnawave playbook"],
+                "used_by": ["remnawave"],
                 "default": "",
                 "generate": "openssl rand -hex 32",
             },
             {
                 "name": "postgres_password",
                 "description": "PostgreSQL database password",
-                "used_by": ["remnawave playbook"],
+                "used_by": ["remnawave"],
                 "default": "",
                 "generate": "openssl rand -hex 10",
             },
@@ -70,14 +70,14 @@ SCHEMA = [
             {
                 "name": "telegram_bot_token",
                 "description": "Telegram bot token from BotFather",
-                "used_by": ["remnawave playbook"],
+                "used_by": ["remnawave"],
                 "default": "",
                 "generate": None,
             },
             {
                 "name": "admin_telegram_id",
                 "description": "Admin's Telegram user ID (integer)",
-                "used_by": ["remnawave playbook"],
+                "used_by": ["remnawave"],
                 "default": "",
                 "generate": None,
             },
@@ -89,7 +89,7 @@ SCHEMA = [
             {
                 "name": "node_secret_keys",
                 "description": "Per-node secret keys from Remnawave Panel (dict: node-1, node-2, ...)",
-                "used_by": ["remnawave playbook", "node playbook"],
+                "used_by": ["remnawave", "nodes"],
                 "default": None,
                 "generate": None,
                 "type": "dict",
@@ -97,21 +97,21 @@ SCHEMA = [
             {
                 "name": "reality_private_key",
                 "description": "Reality X25519 private key (server side)",
-                "used_by": ["remnawave playbook", "node playbook"],
+                "used_by": ["remnawave", "nodes"],
                 "default": "",
                 "generate": "docker run --rm teddysun/xray:latest xray x25519",
             },
             {
                 "name": "reality_public_key",
                 "description": "Reality X25519 public key (client side)",
-                "used_by": ["remnawave playbook", "node playbook"],
+                "used_by": ["remnawave", "nodes"],
                 "default": "",
                 "generate": None,
             },
             {
                 "name": "reality_short_id",
                 "description": "Reality short ID",
-                "used_by": ["remnawave playbook", "node playbook"],
+                "used_by": ["remnawave", "nodes"],
                 "default": "",
                 "generate": "openssl rand -hex 8",
             },
@@ -123,7 +123,7 @@ SCHEMA = [
             {
                 "name": "outline_api_prefix",
                 "description": "Management API path secret (from access.txt on server)",
-                "used_by": ["node playbook"],
+                "used_by": ["nodes"],
                 "default": "",
                 "generate": None,
             },
@@ -135,7 +135,7 @@ SCHEMA = [
             {
                 "name": "cloudflare_api_token",
                 "description": "Cloudflare API token for DNS-01 challenge (Zone:DNS:Edit)",
-                "used_by": ["remnawave playbook"],
+                "used_by": ["remnawave"],
                 "default": "",
                 "generate": None,
             },
@@ -154,28 +154,28 @@ SCHEMA = [
             {
                 "name": "xray_tunnel_uuid",
                 "description": "UUID for Xray reverse proxy tunnel",
-                "used_by": ["site playbook", "home_server playbook"],
+                "used_by": ["vps", "home_server"],
                 "default": "",
                 "generate": "uuidgen",
             },
             {
                 "name": "xray_tunnel_private_key",
                 "description": "X25519 private key for Xray tunnel",
-                "used_by": ["site playbook", "home_server playbook"],
+                "used_by": ["vps", "home_server"],
                 "default": "",
                 "generate": "docker run --rm teddysun/xray:latest xray x25519",
             },
             {
                 "name": "xray_tunnel_public_key",
                 "description": "X25519 public key for Xray tunnel",
-                "used_by": ["site playbook", "home_server playbook"],
+                "used_by": ["vps", "home_server"],
                 "default": "",
                 "generate": None,
             },
             {
                 "name": "xray_tunnel_short_id",
                 "description": "Short ID for Xray tunnel",
-                "used_by": ["site playbook", "home_server playbook"],
+                "used_by": ["vps", "home_server"],
                 "default": "",
                 "generate": "openssl rand -hex 8",
             },
@@ -187,14 +187,14 @@ SCHEMA = [
             {
                 "name": "radicale_user",
                 "description": "Radicale CalDAV username",
-                "used_by": ["home_server playbook"],
+                "used_by": ["home_server"],
                 "default": "admin",
                 "generate": None,
             },
             {
                 "name": "radicale_password_hash",
                 "description": "Radicale CalDAV password hash (apr1 format)",
-                "used_by": ["home_server playbook"],
+                "used_by": ["home_server"],
                 "default": "",
                 "generate": "htpasswd -nbBC 5 '' 'yourpassword' | cut -d: -f2",
             },
@@ -206,14 +206,14 @@ SCHEMA = [
             {
                 "name": "coturn_user",
                 "description": "coturn TURN/STUN username",
-                "used_by": ["site playbook"],
+                "used_by": ["vps"],
                 "default": "",
                 "generate": None,
             },
             {
                 "name": "coturn_password",
                 "description": "coturn TURN/STUN password",
-                "used_by": ["site playbook"],
+                "used_by": ["vps"],
                 "default": "",
                 "generate": "openssl rand -hex 16",
             },
@@ -225,7 +225,7 @@ SCHEMA = [
             {
                 "name": "claudecodeui_anthropic_api_key",
                 "description": "Anthropic API key for Claude Code UI (optional — can use CLI login instead)",
-                "used_by": ["claudecodeui playbook"],
+                "used_by": ["claudecodeui"],
                 "default": "optional",
                 "generate": None,
             },
@@ -237,63 +237,63 @@ SCHEMA = [
             {
                 "name": "authelia_jwt_secret",
                 "description": "JWT secret (min 32 chars)",
-                "used_by": ["site playbook", "authelia role"],
+                "used_by": ["vps"],
                 "default": "",
                 "generate": "openssl rand -base64 32",
             },
             {
                 "name": "authelia_session_secret",
                 "description": "Session secret (min 32 chars)",
-                "used_by": ["site playbook", "authelia role"],
+                "used_by": ["vps"],
                 "default": "",
                 "generate": "openssl rand -base64 32",
             },
             {
                 "name": "authelia_storage_encryption_key",
                 "description": "Storage encryption key (min 32 chars)",
-                "used_by": ["site playbook", "authelia role"],
+                "used_by": ["vps"],
                 "default": "",
                 "generate": "openssl rand -base64 32",
             },
             {
                 "name": "authelia_admin_user",
                 "description": "Admin username",
-                "used_by": ["site playbook", "authelia role"],
+                "used_by": ["vps"],
                 "default": "admin",
                 "generate": None,
             },
             {
                 "name": "authelia_admin_displayname",
                 "description": "Admin display name",
-                "used_by": ["site playbook", "authelia role"],
+                "used_by": ["vps"],
                 "default": "Administrator",
                 "generate": None,
             },
             {
                 "name": "authelia_admin_email",
                 "description": "Admin email address",
-                "used_by": ["site playbook", "authelia role"],
+                "used_by": ["vps"],
                 "default": "",
                 "generate": None,
             },
             {
                 "name": "authelia_admin_password_hash",
                 "description": "Admin password hash (argon2id)",
-                "used_by": ["site playbook", "authelia role"],
+                "used_by": ["vps"],
                 "default": "",
                 "generate": "docker run --rm authelia/authelia:latest authelia crypto hash generate --password 'yourpassword'",
             },
             {
                 "name": "authelia_oidc_hmac_secret",
                 "description": "OIDC HMAC secret (min 32 chars)",
-                "used_by": ["site playbook", "authelia role"],
+                "used_by": ["vps"],
                 "default": "",
                 "generate": "openssl rand -base64 32",
             },
             {
                 "name": "authelia_oidc_jwks_rsa_private_key",
                 "description": "OIDC JWKS RSA private key (PEM format)",
-                "used_by": ["site playbook", "authelia role"],
+                "used_by": ["vps"],
                 "default": "",
                 "generate": "openssl genrsa 2048",
             },
@@ -308,6 +308,16 @@ def secrets_path() -> Path:
 
 def all_keys() -> list[dict]:
     return [key for section in SCHEMA for key in section["keys"]]
+
+
+def keys_for_target(target_name: str) -> list[dict]:
+    """Return schema keys whose used_by includes the given target name."""
+    return [
+        key
+        for section in SCHEMA
+        for key in section["keys"]
+        if target_name in key["used_by"]
+    ]
 
 
 def section_for_key(key_name: str) -> str | None:
@@ -424,7 +434,7 @@ def init_secrets() -> int:
     return 0
 
 
-def check_secrets(feature: str | None = None) -> int:
+def check_secrets(feature: str | None = None, target: str | None = None) -> int:
     path = secrets_path()
     if not path.exists():
         print(f"Error: {path} not found. Run 'just secrets-init' first.")
@@ -433,6 +443,8 @@ def check_secrets(feature: str | None = None) -> int:
     with open(path) as f:
         data = yaml.safe_load(f) or {}
 
+    relevant_names = {k["name"] for k in keys_for_target(target)} if target else None
+
     all_ok = True
 
     for section in SCHEMA:
@@ -440,6 +452,10 @@ def check_secrets(feature: str | None = None) -> int:
             continue
 
         keys = section["keys"]
+        if relevant_names is not None:
+            keys = [k for k in keys if k["name"] in relevant_names]
+        if not keys:
+            continue
         configured = 0
         missing_items = []
 
