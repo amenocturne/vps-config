@@ -229,14 +229,6 @@ SCHEMA = [
                 "default": "optional",
                 "generate": None,
             },
-            {
-                "name": "authelia_extra_users",
-                "description": "Additional Authelia users (list of {username, displayname, email, password_hash})",
-                "used_by": ["site playbook", "authelia role"],
-                "default": None,
-                "generate": "docker run --rm authelia/authelia:latest authelia crypto hash generate --password 'password'",
-                "type": "dict",
-            },
         ],
     },
     {

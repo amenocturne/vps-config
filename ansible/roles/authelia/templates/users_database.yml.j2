@@ -6,7 +6,7 @@ users:
     groups:
       - admins
       - dev
-{% if authelia_extra_users is defined %}
+{% if authelia_extra_users is defined and authelia_extra_users %}
 {% for user in authelia_extra_users %}
   {{ user.username }}:
     displayname: "{{ user.displayname }}"
