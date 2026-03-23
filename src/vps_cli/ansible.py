@@ -30,6 +30,7 @@ TARGETS = {
         "inventory": "inventories/claudecodeui.yml",
         "host": "claudecodeui",
         "description": "Claude Code UI server",
+        "enabled": False,
     },
 }
 

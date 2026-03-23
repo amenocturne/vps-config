@@ -41,7 +41,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     if run_all or args.connectivity:
         available = {
             name: cfg for name, cfg in TARGETS.items()
-            if (ansible_dir / cfg["inventory"]).exists()
+            if cfg.get("enabled", True) and (ansible_dir / cfg["inventory"]).exists()
         }
         if available:
             with ThreadPoolExecutor(max_workers=len(available)) as pool:
