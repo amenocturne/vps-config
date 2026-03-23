@@ -62,11 +62,6 @@ access_control:
 {% endif %}
 {% endfor %}
 {% endif %}
-    # Claude Code UI (separate VPS, Authelia-protected)
-{% if claudecodeui_server_ip is defined %}
-    - domain: "claude.{{ domain_name }}"
-      policy: one_factor
-{% endif %}
     # Remnawave: bypass API endpoints to allow Remnawave's own auth
     - domain: "panel.{{ domain_name }}"
       policy: bypass

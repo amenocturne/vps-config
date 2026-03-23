@@ -1,6 +1,0 @@
----
-- name: restart cloudcli
-  systemd:
-    name: cloudcli
-    state: restarted
-    daemon_reload: true

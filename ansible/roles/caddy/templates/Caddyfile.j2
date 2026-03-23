@@ -100,22 +100,6 @@ wishlist.{{ domain_name }} {
     reverse_proxy 127.0.0.1:{{ wishlist_port }}
 }
 
-# Claude Code UI (proxied to separate VPS, Authelia-protected)
-{% if domain_name != "YOUR_DOMAIN_OR_IP" and claudecodeui_server_ip is defined %}
-claude.{{ domain_name }} {
-    forward_auth 127.0.0.1:{{ authelia_port }} {
-        uri /api/authz/forward-auth
-        copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
-    }
-    reverse_proxy http://{{ claudecodeui_server_ip }}:{{ claudecodeui_port | default(3001) }} {
-        header_up Host {host}
-        header_up X-Real-IP {remote_host}
-        header_up X-Forwarded-For {remote_host}
-        header_up X-Forwarded-Proto https
-        header_up X-Forwarded-Host {host}
-    }
-}
-{% endif %}
 
 # Home server apps (tunneled via Xray reverse proxy)
 {% if domain_name != "YOUR_DOMAIN_OR_IP" and home_apps is defined %}
