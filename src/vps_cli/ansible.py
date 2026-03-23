@@ -25,6 +25,12 @@ TARGETS = {
         "host": "remnawave_nodes",
         "description": "all VPN nodes",
     },
+    "claudecodeui": {
+        "playbook": "playbooks/claudecodeui.yml",
+        "inventory": "inventories/claudecodeui.yml",
+        "host": "claudecodeui",
+        "description": "Claude Code UI server",
+    },
 }
 
 # Per-target deployable components (name → ansible tag)
@@ -44,6 +50,9 @@ TARGET_COMPONENTS: dict[str, dict[str, str]] = {
         "panel": "remnawave",
         "subscription": "remnawave-subscription",
         "telegram-bot": "remnawave-telegram-bot",
+    },
+    "claudecodeui": {
+        "claudecodeui": "claudecodeui",
     },
 }
 

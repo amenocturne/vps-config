@@ -1,0 +1,55 @@
+all:
+  hosts:
+    claudecodeui:
+      ansible_host: "CHANGE_ME"
+      ansible_user: root
+      ansible_ssh_private_key_file: ~/.ssh/bitlaunch
+      ansible_python_interpreter: /usr/bin/python3
+
+  vars:
+    main_vps_ip: "168.100.11.130"
+
+    # System configuration
+    system_timezone: "UTC"
+    apt_cache_valid_time: 3600
+
+    # Directory structure
+    base_directory: "/opt"
+    logs_directory: "/opt/logs"
+
+    # Network configuration
+    http_port: 80
+    https_port: 443
+
+    # SSH configuration
+    ssh_port: 22
+    ssh_permit_root_login: "yes"
+    ssh_password_authentication: "no"
+    ssh_pubkey_authentication: "yes"
+
+    # Security configuration
+    fail2ban_enabled: true
+    unattended_upgrades_enabled: true
+    automatic_reboot: false
+
+    # Essential packages
+    essential_packages:
+      - curl
+      - wget
+      - git
+      - htop
+      - unzip
+      - software-properties-common
+      - apt-transport-https
+      - ca-certificates
+      - gnupg
+      - lsb-release
+
+    # Security packages
+    security_packages:
+      - fail2ban
+      - unattended-upgrades
+
+    # Deployment user configuration
+    deployment_user: "deployer"
+    deployment_user_ssh_key: ""

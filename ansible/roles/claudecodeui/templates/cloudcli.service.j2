@@ -1,0 +1,15 @@
+[Unit]
+Description=Claude Code UI (CloudCLI)
+After=network.target
+
+[Service]
+Type=simple
+User={{ cloudcli_user }}
+WorkingDirectory={{ cloudcli_directory }}
+EnvironmentFile={{ cloudcli_directory }}/.env
+ExecStart=/usr/bin/cloudcli
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
