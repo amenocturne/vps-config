@@ -1,6 +1,0 @@
----
-- name: restart wishlist
-  shell: |
-    cd {{ wishlist_directory }}
-    docker compose down
-    docker compose up -d

@@ -1,0 +1,4 @@
+---
+navidrome_dir: "/opt/navidrome"
+navidrome_port: 4533
+navidrome_image: "deluan/navidrome:latest"

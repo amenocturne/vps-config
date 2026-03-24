@@ -1,0 +1,4 @@
+---
+webdav_dir: "/opt/webdav"
+webdav_port: 8083
+webdav_image: "hacdias/webdav:latest"

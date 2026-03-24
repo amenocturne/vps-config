@@ -1,0 +1,91 @@
+---
+title: "amenocturne"
+subtitle: "services"
+header: true
+footer: false
+columns: "auto"
+connectivityCheck: true
+
+stylesheet:
+  - "assets/catppuccin-mocha.css"
+
+defaults:
+  colorTheme: dark
+
+theme: default
+colors:
+  dark:
+    highlight-primary: "transparent"
+    highlight-secondary: "#313244"
+    highlight-hover: "#313244"
+    background: "#1e1e2e"
+    card-background: "#313244"
+    text: "#cdd6f4"
+    text-header: "#cdd6f4"
+    text-title: "#cdd6f4"
+    text-subtitle: "#94e2d5"
+    card-shadow: rgba(0, 0, 0, 0.4)
+    link: "#a6e3a1"
+    link-hover: "#a6e3a1"
+
+services:
+  - name: "Media"
+    icon: "fas fa-photo-video"
+    items:
+      - name: "Jellyfin"
+        subtitle: "Movies & Series"
+        url: "https://jellyfin.{{ home_domain }}"
+        icon: "fas fa-film"
+        tag: "home server"
+      - name: "Navidrome"
+        subtitle: "Music streaming"
+        url: "https://music.{{ home_domain }}"
+        icon: "fas fa-music"
+        tag: "home server"
+
+  - name: "Files"
+    icon: "fas fa-folder"
+    items:
+      - name: "WebDAV"
+        subtitle: "Network folder (mount in Finder)"
+        url: "https://files.{{ home_domain }}"
+        icon: "fas fa-hdd"
+        tag: "home server"
+      - name: "Send"
+        subtitle: "Encrypted file sharing"
+        url: "https://send.{{ home_domain }}"
+        icon: "fas fa-paper-plane"
+        tag: "home server"
+
+  - name: "Productivity"
+    icon: "fas fa-tasks"
+    items:
+      - name: "Dwayne"
+        subtitle: "Task manager"
+        url: "https://dwayne.{{ home_domain }}"
+        icon: "fas fa-check-square"
+        tag: "home server"
+      - name: "Radicale"
+        subtitle: "Calendar & Contacts"
+        url: "https://cal.{{ home_domain }}"
+        icon: "fas fa-calendar"
+        tag: "home server"
+
+  - name: "Infrastructure"
+    icon: "fas fa-server"
+    items:
+      - name: "Grafana"
+        subtitle: "Monitoring dashboards"
+        url: "https://grafana.{{ domain_name }}"
+        icon: "fas fa-chart-area"
+        tag: "vps"
+      - name: "Prometheus"
+        subtitle: "Metrics"
+        url: "https://prometheus.{{ domain_name }}"
+        icon: "fas fa-database"
+        tag: "vps"
+      - name: "Remnawave"
+        subtitle: "VPN panel"
+        url: "https://panel.{{ domain_name }}"
+        icon: "fas fa-shield-alt"
+        tag: "vps"

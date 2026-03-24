@@ -1,0 +1,14 @@
+services:
+  navidrome:
+    image: {{ navidrome_image }}
+    container_name: navidrome
+    restart: unless-stopped
+    ports:
+      - "{{ navidrome_port }}:4533"
+    environment:
+      ND_MUSICFOLDER: /music
+      ND_DATAFOLDER: /data
+      ND_BASEURL: ""
+    volumes:
+      - {{ navidrome_dir }}/data:/data
+      - {{ media_root }}/Backup/Music-Player:/music:ro

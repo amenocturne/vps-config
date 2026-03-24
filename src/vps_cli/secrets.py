@@ -182,6 +182,44 @@ SCHEMA = [
         ],
     },
     {
+        "section": "Send",
+        "keys": [
+            {
+                "name": "send_admin_password",
+                "description": "Send admin password (your account)",
+                "used_by": ["vps"],
+                "default": "",
+                "generate": "openssl rand -hex 12",
+            },
+            {
+                "name": "send_shared_password",
+                "description": "Send friend password (shared with trusted friends)",
+                "used_by": ["vps"],
+                "default": "",
+                "generate": "openssl rand -hex 12",
+            },
+        ],
+    },
+    {
+        "section": "WebDAV",
+        "keys": [
+            {
+                "name": "webdav_user",
+                "description": "WebDAV username",
+                "used_by": ["home_server"],
+                "default": "",
+                "generate": None,
+            },
+            {
+                "name": "webdav_password",
+                "description": "WebDAV password",
+                "used_by": ["home_server"],
+                "default": "",
+                "generate": "openssl rand -hex 16",
+            },
+        ],
+    },
+    {
         "section": "Radicale",
         "keys": [
             {

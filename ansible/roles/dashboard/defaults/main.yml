@@ -1,0 +1,4 @@
+---
+dashboard_dir: "/opt/dashboard"
+dashboard_port: 8085
+dashboard_image: "b4bz/homer:latest"

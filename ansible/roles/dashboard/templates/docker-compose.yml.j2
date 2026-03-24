@@ -1,0 +1,9 @@
+services:
+  dashboard:
+    image: {{ dashboard_image }}
+    container_name: dashboard
+    restart: unless-stopped
+    ports:
+      - "{{ dashboard_port }}:8080"
+    volumes:
+      - {{ dashboard_dir }}/assets:/www/assets

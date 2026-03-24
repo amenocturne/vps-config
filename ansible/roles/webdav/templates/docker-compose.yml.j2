@@ -1,0 +1,11 @@
+services:
+  webdav:
+    image: {{ webdav_image }}
+    container_name: webdav
+    restart: unless-stopped
+    ports:
+      - "{{ webdav_port }}:8083"
+    volumes:
+      - {{ webdav_dir }}/config.yml:/config.yml:ro
+      - {{ media_root }}:/data
+    command: ["--config", "/config.yml"]

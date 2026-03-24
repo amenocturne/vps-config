@@ -1,0 +1,34 @@
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: send-redis
+    restart: unless-stopped
+    volumes:
+      - {{ send_dir }}/redis:/data
+    networks:
+      - send-net
+
+  send:
+    image: {{ send_image }}
+    container_name: send
+    restart: unless-stopped
+    ports:
+      - "{{ send_port }}:1443"
+    environment:
+      VIRTUAL_HOST: "send.{{ home_domain }}"
+      VIRTUAL_PORT: "1443"
+      REDIS_HOST: redis
+      NODE_ENV: production
+      BASE_URL: "https://send.{{ home_domain }}"
+      MAX_FILE_SIZE: "{{ send_max_file_size }}"
+      MAX_EXPIRE_SECONDS: "{{ send_max_expire_seconds }}"
+      MAX_DOWNLOADS: "{{ send_max_downloads }}"
+    volumes:
+      - {{ send_dir }}/uploads:/uploads
+    depends_on:
+      - redis
+    networks:
+      - send-net
+
+networks:
+  send-net:

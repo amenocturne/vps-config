@@ -1,0 +1,57 @@
+---
+- name: Create dashboard directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ dashboard_dir }}"
+    - "{{ dashboard_dir }}/assets"
+    - "{{ dashboard_dir }}/assets/icons"
+    - "{{ dashboard_dir }}/assets/images/backgrounds"
+
+- name: Copy catppuccin mocha theme
+  copy:
+    src: catppuccin/flavours/catppuccin-mocha.css
+    dest: "{{ dashboard_dir }}/assets/catppuccin-mocha.css"
+    mode: '0644'
+  notify: restart dashboard
+
+- name: Copy background image
+  copy:
+    src: catppuccin/assets/images/backgrounds/romb.png
+    dest: "{{ dashboard_dir }}/assets/images/backgrounds/romb.png"
+    mode: '0644'
+  notify: restart dashboard
+
+- name: Copy dark favicons archive
+  copy:
+    src: catppuccin/assets/favicons/dark_favicon.zip
+    dest: "{{ dashboard_dir }}/dark_favicon.zip"
+    mode: '0644'
+
+- name: Extract dark favicons
+  unarchive:
+    src: "{{ dashboard_dir }}/dark_favicon.zip"
+    dest: "{{ dashboard_dir }}/assets/icons/"
+    remote_src: true
+  notify: restart dashboard
+
+- name: Deploy dashboard config
+  template:
+    src: config.yml.j2
+    dest: "{{ dashboard_dir }}/assets/config.yml"
+    mode: '0644'
+  notify: restart dashboard
+
+- name: Deploy dashboard docker-compose
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ dashboard_dir }}/docker-compose.yml"
+    mode: '0644'
+  notify: restart dashboard
+
+- name: Start dashboard
+  community.docker.docker_compose_v2:
+    project_src: "{{ dashboard_dir }}"
+    state: present

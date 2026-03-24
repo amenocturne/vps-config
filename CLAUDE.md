@@ -20,9 +20,10 @@ Domain: `amenocturne.space` (panel at `panel.amenocturne.space`, nodes at `*.rut
 ### Deploy Targets
 
 - `vps` -- site.yml: common, security, docker, authelia, projects, personal-website, wishlist, coturn, briefing, xray-portal, caddy, monitoring
+- `home` -- home_server.yml: common, security, xray-bridge, radicale, dwayne, jellyfin, navidrome, seafile
 - `remnawave` -- remnawave.yml: common, security, docker, remnawave, remnawave-subscription-page, remnawave-telegram-bot
 - `nodes` -- node.yml: common, security, docker, remnawave-node
-- Deploy single component: `vps deploy vps caddy`, `vps deploy remnawave telegram-bot`
+- Deploy single component: `vps deploy vps caddy`, `vps deploy home jellyfin`
 - Single node: `vps deploy node-2` (limits to one node)
 
 ## CLI Commands
@@ -41,6 +42,8 @@ vps deploy remnawave all         # deploy everything on remnawave
 vps deploy remnawave telegram-bot # deploy just the telegram bot
 vps deploy vps caddy             # deploy just caddy on main server
 vps deploy vps all               # deploy everything on main server
+vps deploy home all              # deploy everything on home server
+vps deploy home jellyfin         # deploy just jellyfin on home server
 vps deploy nodes                 # deploy all VPN nodes
 vps deploy node-2                # deploy specific node
 vps deploy <target> <comp> --dry-run  # check mode
@@ -68,6 +71,7 @@ vps remnawave template push      # upload Mihomo template to panel (--file, --na
 | Target | Components | Notes |
 |--------|-----------|-------|
 | `vps` | caddy, authelia, monitoring, personal-website, wishlist, coturn, briefing, tunnel, projects | Main server roles |
+| `home` | tunnel, radicale, dwayne, jellyfin, navidrome, seafile | Home server (MacBook) roles |
 | `remnawave` | panel, subscription, telegram-bot | Panel server roles |
 | `nodes` | — | Use `node-N` to limit to one node |
 
@@ -104,6 +108,7 @@ All in `secrets.yml` (gitignored). Schema defined in `src/vps_cli/secrets.py`. S
 - **VPN Nodes**: `node_secret_keys` (dict: node-1, node-2, ...), `reality_private_key`, `reality_public_key`, `reality_short_id`
 - **Cloudflare**: `cloudflare_api_token`
 - **Xray Tunnel**: `xray_tunnel_uuid`, `xray_tunnel_private_key`, `xray_tunnel_public_key`, `xray_tunnel_short_id`
+- **Seafile**: `seafile_db_password`, `seafile_admin_email`, `seafile_admin_password`
 - **Radicale**: `radicale_user`, `radicale_password_hash`
 - **TURN/STUN**: `coturn_user`, `coturn_password`
 - **Authelia**: `authelia_jwt_secret`, `authelia_session_secret`, `authelia_storage_encryption_key`, `authelia_admin_user`, `authelia_admin_displayname`, `authelia_admin_email`, `authelia_admin_password_hash`, `authelia_oidc_hmac_secret`, `authelia_oidc_jwks_rsa_private_key`

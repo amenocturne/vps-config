@@ -1,0 +1,25 @@
+---
+- name: Create webdav directory
+  file:
+    path: "{{ webdav_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Deploy webdav config
+  template:
+    src: config.yml.j2
+    dest: "{{ webdav_dir }}/config.yml"
+    mode: '0644'
+  notify: restart webdav
+
+- name: Deploy webdav docker-compose
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ webdav_dir }}/docker-compose.yml"
+    mode: '0644'
+  notify: restart webdav
+
+- name: Start webdav
+  community.docker.docker_compose_v2:
+    project_src: "{{ webdav_dir }}"
+    state: present

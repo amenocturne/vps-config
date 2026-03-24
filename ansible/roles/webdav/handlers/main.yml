@@ -1,0 +1,5 @@
+---
+- name: restart webdav
+  community.docker.docker_compose_v2:
+    project_src: "{{ webdav_dir }}"
+    state: restarted

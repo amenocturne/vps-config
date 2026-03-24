@@ -50,6 +50,8 @@ access_control:
       policy: one_factor
     - domain: "loki.{{ domain_name }}"
       policy: one_factor
+    - domain: "dash.{{ domain_name }}"
+      policy: one_factor
     # Home server apps (tunneled via Xray)
 {% if home_apps is defined %}
 {% for app in home_apps %}

@@ -14,3 +14,7 @@
     - { role: xray-bridge, tags: ['tunnel'] }
     - { role: radicale, tags: ['radicale'] }
     - { role: dwayne, tags: ['dwayne'] }
+    - { role: jellyfin, tags: ['jellyfin'] }
+    - { role: navidrome, tags: ['navidrome'] }
+    - { role: webdav, tags: ['webdav'] }
+    - { role: send, tags: ['send'] }

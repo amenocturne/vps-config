@@ -129,6 +129,23 @@ all:
         subdomain: cal
         port: 5232
         auth_required: false
+      - name: jellyfin
+        subdomain: jellyfin
+        port: 8096
+        auth_required: false
+      - name: navidrome
+        subdomain: music
+        port: 4533
+        auth_required: false
+      - name: webdav
+        subdomain: files
+        port: 8083
+        auth_required: false
+      - name: send
+        subdomain: send
+        port: 1443
+        custom_caddy: true
+        auth_required: false
 
     # Projects configuration
     projects:

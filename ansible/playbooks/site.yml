@@ -11,9 +11,9 @@
     - { role: authelia, tags: ['authelia'] }
     - { role: projects, tags: ['projects'] }
     - { role: personal-website, tags: ['personal-website'] }
-    - { role: wishlist, tags: ['wishlist'] }
     - { role: coturn, tags: ['coturn'] }
     - { role: briefing, tags: ['briefing'] }
     - { role: xray-portal, tags: ['tunnel'] }
+    - { role: dashboard, tags: ['dashboard'] }
     - { role: caddy, tags: ['caddy'] }
     - { role: monitoring, tags: ['monitoring'] }

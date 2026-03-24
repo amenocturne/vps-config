@@ -1,0 +1,7 @@
+---
+send_dir: "/opt/send"
+send_port: 1443
+send_image: "registry.gitlab.com/timvisee/send:latest"
+send_max_file_size: 5368709120  # 5GB
+send_max_expire_seconds: 604800  # 7 days
+send_max_downloads: 100

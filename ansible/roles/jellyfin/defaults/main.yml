@@ -1,0 +1,4 @@
+---
+jellyfin_dir: "/opt/jellyfin"
+jellyfin_port: 8096
+jellyfin_image: "jellyfin/jellyfin:latest"

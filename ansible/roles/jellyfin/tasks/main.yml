@@ -1,0 +1,22 @@
+---
+- name: Create jellyfin directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ jellyfin_dir }}"
+    - "{{ jellyfin_dir }}/config"
+    - "{{ jellyfin_dir }}/cache"
+
+- name: Deploy jellyfin docker-compose
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ jellyfin_dir }}/docker-compose.yml"
+    mode: '0644'
+  notify: restart jellyfin
+
+- name: Start jellyfin
+  community.docker.docker_compose_v2:
+    project_src: "{{ jellyfin_dir }}"
+    state: present

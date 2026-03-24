@@ -1,0 +1,15 @@
+services:
+  jellyfin:
+    image: {{ jellyfin_image }}
+    container_name: jellyfin
+    restart: unless-stopped
+    ports:
+      - "{{ jellyfin_port }}:8096"
+    environment:
+      - JELLYFIN_PublishedServerUrl=https://jellyfin.{{ home_domain }}
+    volumes:
+      - {{ jellyfin_dir }}/config:/config
+      - {{ jellyfin_dir }}/cache:/cache
+      - {{ media_root }}/Library/Movies:/media/movies:ro
+      - {{ media_root }}/Library/Series:/media/series:ro
+      - {{ media_root }}/Library/Courses:/media/courses:ro

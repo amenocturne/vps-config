@@ -91,15 +91,6 @@ call.{{ domain_name }} {
     reverse_proxy 127.0.0.1:{{ briefing_port }}
 }
 
-# Wishlist app (has own authentication)
-{% if domain_name != "YOUR_DOMAIN_OR_IP" %}
-wishlist.{{ domain_name }} {
-{% else %}
-:3281 {
-{% endif %}
-    reverse_proxy 127.0.0.1:{{ wishlist_port }}
-}
-
 # Claude Code UI (proxied to separate VPS, Authelia-protected)
 {% if domain_name != "YOUR_DOMAIN_OR_IP" and claudecodeui_server_ip is defined %}
 claude.{{ domain_name }} {
@@ -117,9 +108,21 @@ claude.{{ domain_name }} {
 }
 {% endif %}
 
+# Dashboard
+{% if domain_name != "YOUR_DOMAIN_OR_IP" %}
+dash.{{ domain_name }} {
+    forward_auth 127.0.0.1:{{ authelia_port }} {
+        uri /api/authz/forward-auth
+        copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
+    }
+    reverse_proxy 127.0.0.1:{{ dashboard_port | default(8085) }}
+}
+{% endif %}
+
 # Home server apps (tunneled via Xray reverse proxy)
 {% if domain_name != "YOUR_DOMAIN_OR_IP" and home_apps is defined %}
 {% for app in home_apps %}
+{% if not app.custom_caddy | default(false) %}
 {{ app.subdomain }}.{{ home_domain }} {
 {% if app.auth_required | default(true) %}
     forward_auth 127.0.0.1:{{ authelia_port }} {
@@ -129,7 +132,23 @@ claude.{{ domain_name }} {
 {% endif %}
     reverse_proxy 127.0.0.1:{{ xray_portal_listen_port | default(8888) }}
 }
+{% endif %}
 {% endfor %}
+
+# Send — basic auth to upload, bypass for download links
+send.{{ home_domain }} {
+    @downloads path /api/download/* /download/*
+    handle @downloads {
+        reverse_proxy 127.0.0.1:{{ xray_portal_listen_port | default(8888) }}
+    }
+    handle {
+        basicauth {
+            admin {{ send_admin_hash }}
+            shared {{ send_shared_hash }}
+        }
+        reverse_proxy 127.0.0.1:{{ xray_portal_listen_port | default(8888) }}
+    }
+}
 {% endif %}
 
 # Main domain - serve personal website
