@@ -185,6 +185,18 @@ def restore_world(name: str) -> None:
             shutil.copytree(str(world_src), str(world_dst))
 
 
+def fix_world_permissions() -> None:
+    """Ensure world dirs are owned by UID 1000 (minecraft user)."""
+    for w in WORLD_DIRS:
+        p = MC_DATA_DIR / w
+        if p.exists():
+            for root, dirs, files in os.walk(str(p)):
+                os.chown(root, 1000, 1000)
+                for f in files:
+                    os.chown(os.path.join(root, f), 1000, 1000)
+    log.info("Fixed world directory permissions")
+
+
 def remove_active_world_dirs() -> None:
     for w in WORLD_DIRS:
         p = MC_DATA_DIR / w
@@ -299,6 +311,7 @@ class Handler(BaseHTTPRequestHandler):
                 remove_active_world_dirs()
 
             restore_world(name)
+            fix_world_permissions()
             set_active_name(name)
             start_mc()
             self._respond(200, {"status": "ok", "active": name})
