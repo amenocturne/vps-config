@@ -16,6 +16,7 @@
     - bot.py
     - remnawave.py
     - config.py
+    - monitoring.py
     - pyproject.toml
     - uv.lock
     - Dockerfile

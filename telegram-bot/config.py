@@ -13,6 +13,7 @@ REMNAWAVE_API_URL: str = _require("REMNAWAVE_API_URL").rstrip("/")
 REMNAWAVE_API_TOKEN: str = _require("REMNAWAVE_API_TOKEN")
 ADMIN_TELEGRAM_ID: int = int(_require("ADMIN_TELEGRAM_ID"))
 SUBSCRIPTION_BASE_URL: str = _require("SUBSCRIPTION_BASE_URL").rstrip("/")
+PROMETHEUS_URL: str = os.environ.get("PROMETHEUS_URL", "http://168.100.11.130:9090").rstrip("/")
 
 # Mirrors remnawave.enums.ClientType — update when Remnawave adds new types
 # "raw" is a special type: fetches default sub and base64-decodes to vless:// links

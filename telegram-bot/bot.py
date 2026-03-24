@@ -1,4 +1,7 @@
 import io
+import logging
+from datetime import time as dt_time, timezone, timedelta
+
 from telegram import (
     Update,
     ReplyKeyboardMarkup,
@@ -16,11 +19,15 @@ from telegram.ext import (
 
 from config import BOT_TOKEN, ADMIN_TELEGRAM_ID, CLIENT_TYPES, SUBSCRIPTION_BASE_URL
 import remnawave
+import monitoring
+
+logger = logging.getLogger(__name__)
 
 def _reply_keyboard(tg_id: int) -> ReplyKeyboardMarkup:
     rows = [["🔑 Получить конфиг"]]
     if tg_id == ADMIN_TELEGRAM_ID:
         rows.append(["👥 Пользователи", "🏓 Пинг"])
+        rows.append(["📊 Статус серверов", "🔔 Проверить алерты"])
     return ReplyKeyboardMarkup(rows, resize_keyboard=True)
 
 
@@ -204,6 +211,50 @@ async def _ping(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(status)
 
 
+async def _server_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    tg_id = update.effective_user.id
+    if not _is_admin(tg_id):
+        return
+
+    health = await monitoring.get_all_servers_health()
+    text = monitoring.format_server_health(health)
+    await update.message.reply_text(text)
+
+
+async def _check_alerts(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    tg_id = update.effective_user.id
+    if not _is_admin(tg_id):
+        return
+
+    alerts = await monitoring.check_alerts()
+    text = monitoring.format_alerts(alerts)
+    await update.message.reply_text(text)
+
+
+async def _daily_digest_job(context: ContextTypes.DEFAULT_TYPE) -> None:
+    health = await monitoring.get_all_servers_health()
+    alerts = await monitoring.check_alerts()
+    text = monitoring.format_daily_digest(health, alerts)
+    await context.bot.send_message(chat_id=ADMIN_TELEGRAM_ID, text=text)
+
+
+async def _periodic_alert_job(context: ContextTypes.DEFAULT_TYPE) -> None:
+    alerts = await monitoring.check_alerts()
+    alert_set = frozenset(alerts)
+    prev = context.bot_data.get("_last_alerts", frozenset())
+    if alert_set == prev:
+        return
+    context.bot_data["_last_alerts"] = alert_set
+    if alerts:
+        text = monitoring.format_alerts(alerts)
+        await context.bot.send_message(chat_id=ADMIN_TELEGRAM_ID, text=text)
+    elif prev:
+        await context.bot.send_message(
+            chat_id=ADMIN_TELEGRAM_ID,
+            text="\u2705 All alerts resolved",
+        )
+
+
 async def _fallback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     tg_id = update.effective_user.id
     if not await _is_authorized(tg_id):
@@ -226,10 +277,28 @@ def main() -> None:
     app.add_handler(MessageHandler(filters.Text(["🔑 Получить конфиг"]), _get_config_menu))
     app.add_handler(MessageHandler(filters.Text(["👥 Пользователи"]), _users_list))
     app.add_handler(MessageHandler(filters.Text(["🏓 Пинг"]), _ping))
+    app.add_handler(MessageHandler(filters.Text(["📊 Статус серверов"]), _server_status))
+    app.add_handler(MessageHandler(filters.Text(["🔔 Проверить алерты"]), _check_alerts))
     app.add_handler(CallbackQueryHandler(_pick_user_callback, pattern=r"^pick_user:"))
     app.add_handler(CallbackQueryHandler(_config_callback, pattern=r"^config:"))
     app.add_handler(CallbackQueryHandler(_user_detail_callback, pattern=r"^user:"))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, _fallback))
+
+    # Daily digest at 09:00 Moscow time (UTC+3 = 06:00 UTC)
+    moscow_tz = timezone(timedelta(hours=3))
+    app.job_queue.run_daily(
+        _daily_digest_job,
+        time=dt_time(hour=9, minute=0, tzinfo=moscow_tz),
+        name="daily_digest",
+    )
+
+    # Periodic alert check every 5 minutes
+    app.job_queue.run_repeating(
+        _periodic_alert_job,
+        interval=300,
+        first=10,
+        name="periodic_alerts",
+    )
 
     app.run_polling()
 

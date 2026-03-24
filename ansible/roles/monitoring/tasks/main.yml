@@ -214,6 +214,14 @@
     devices:
       - /dev/kmsg
 
+- name: Allow Prometheus access from remnawave server
+  ufw:
+    rule: allow
+    from_ip: "{{ remnawave_server_ip }}"
+    port: "9090"
+    proto: tcp
+    comment: "Prometheus access for telegram bot"
+
 - name: Create textfile directory for node_exporter
   file:
     path: /opt/node_exporter_textfile
