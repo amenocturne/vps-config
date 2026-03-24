@@ -447,12 +447,25 @@ async def _mc_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     elif action.startswith("world_switch:"):
         name = action.removeprefix("world_switch:")
         await query.answer()
-        await query.message.reply_text(f"🔄 Switching to <b>{name}</b>...\nServer will restart.", parse_mode="HTML")
         try:
-            result = await minecraft.switch_world(name)
-            await query.message.reply_text(f"✅ Switched to <b>{name}</b>", parse_mode="HTML", reply_markup=_mc_menu_keyboard())
-        except Exception as e:
-            await query.message.reply_text(f"❌ Failed to switch: {e}", reply_markup=_mc_menu_keyboard())
+            data = await minecraft.get_worlds()
+            active = data.get("active", "")
+        except Exception:
+            active = ""
+        if not active:
+            context.user_data["mc_action"] = "save_then_switch"
+            context.user_data["mc_switch_to"] = name
+            await query.message.reply_text(
+                f"Current world has no name. Enter a name to save it as before switching to <b>{name}</b>:",
+                parse_mode="HTML",
+            )
+        else:
+            await query.message.reply_text(f"🔄 Switching to <b>{name}</b>...\nServer will restart.", parse_mode="HTML")
+            try:
+                result = await minecraft.switch_world(name)
+                await query.message.reply_text(f"✅ Switched to <b>{name}</b>", parse_mode="HTML", reply_markup=_mc_menu_keyboard())
+            except Exception as e:
+                await query.message.reply_text(f"❌ Failed to switch: {e}", reply_markup=_mc_menu_keyboard())
 
     elif action == "world_delete_list":
         await query.answer()
@@ -490,6 +503,30 @@ async def _mc_player_name_handler(update: Update, context: ContextTypes.DEFAULT_
         return
 
     mc_action = context.user_data.pop("mc_action", None)
+    if mc_action == "save_then_switch":
+        switch_to = context.user_data.pop("mc_switch_to", "")
+        name = update.message.text.strip()
+        if not name or "/" in name or len(name) > 30:
+            await update.message.reply_text("Invalid name. Use 1-30 characters, no slashes.", reply_markup=_mc_menu_keyboard())
+            return
+        try:
+            await minecraft.new_world(name)
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 409:
+                await update.message.reply_text(f"❌ World <b>{name}</b> already exists. Choose a different name.", parse_mode="HTML", reply_markup=_mc_menu_keyboard())
+            else:
+                await update.message.reply_text(f"❌ Failed: {e}", reply_markup=_mc_menu_keyboard())
+            return
+        except Exception as e:
+            await update.message.reply_text(f"❌ Failed to save: {e}", reply_markup=_mc_menu_keyboard())
+            return
+        await update.message.reply_text(f"✅ Saved as <b>{name}</b>. Now switching to <b>{switch_to}</b>...", parse_mode="HTML")
+        try:
+            await minecraft.switch_world(switch_to)
+            await update.message.reply_text(f"✅ Switched to <b>{switch_to}</b>", parse_mode="HTML", reply_markup=_mc_menu_keyboard())
+        except Exception as e:
+            await update.message.reply_text(f"❌ Failed to switch: {e}", reply_markup=_mc_menu_keyboard())
+        return
     if mc_action == "new_world":
         name = update.message.text.strip()
         if not name or "/" in name or len(name) > 30:
