@@ -9,23 +9,6 @@
     - "{{ caddy_config_directory }}"
     - "{{ caddy_data_directory }}"
 
-- name: Hash Send admin password
-  command: docker run --rm caddy:2-alpine caddy hash-password --algorithm bcrypt --plaintext "{{ send_admin_password[:71] }}"
-  register: send_admin_hash_result
-  changed_when: false
-  no_log: true
-
-- name: Hash Send shared password
-  command: docker run --rm caddy:2-alpine caddy hash-password --algorithm bcrypt --plaintext "{{ send_shared_password[:71] }}"
-  register: send_shared_hash_result
-  changed_when: false
-  no_log: true
-
-- name: Set hash facts
-  set_fact:
-    send_admin_hash: "{{ send_admin_hash_result.stdout }}"
-    send_shared_hash: "{{ send_shared_hash_result.stdout }}"
-
 - name: Generate Caddyfile
   template:
     src: Caddyfile.j2

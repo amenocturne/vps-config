@@ -182,25 +182,6 @@ SCHEMA = [
         ],
     },
     {
-        "section": "Send",
-        "keys": [
-            {
-                "name": "send_admin_password",
-                "description": "Send admin password (your account)",
-                "used_by": ["vps"],
-                "default": "",
-                "generate": "openssl rand -hex 12",
-            },
-            {
-                "name": "send_shared_password",
-                "description": "Send friend password (shared with trusted friends)",
-                "used_by": ["vps"],
-                "default": "",
-                "generate": "openssl rand -hex 12",
-            },
-        ],
-    },
-    {
         "section": "WebDAV",
         "keys": [
             {
@@ -317,6 +298,13 @@ SCHEMA = [
             {
                 "name": "authelia_admin_password_hash",
                 "description": "Admin password hash (argon2id)",
+                "used_by": ["vps"],
+                "default": "",
+                "generate": "docker run --rm authelia/authelia:latest authelia crypto hash generate --password 'yourpassword'",
+            },
+            {
+                "name": "authelia_shared_password_hash",
+                "description": "Shared user password hash (argon2id) — for friends accessing shared services",
                 "used_by": ["vps"],
                 "default": "",
                 "generate": "docker run --rm authelia/authelia:latest authelia crypto hash generate --password 'yourpassword'",

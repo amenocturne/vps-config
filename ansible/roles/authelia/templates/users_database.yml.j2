@@ -5,14 +5,12 @@ users:
     email: {{ authelia_admin_email }}
     groups:
       - admins
-      - dev
-{% if authelia_extra_users is defined and authelia_extra_users %}
-{% for user in authelia_extra_users %}
-  {{ user.username }}:
-    displayname: "{{ user.displayname }}"
-    password: "{{ user.password_hash }}"
-    email: {{ user.email }}
+      - shared
+{% if authelia_shared_password_hash is defined and authelia_shared_password_hash %}
+  shared:
+    displayname: "Shared"
+    password: "{{ authelia_shared_password_hash }}"
+    email: shared@{{ domain_name }}
     groups:
-      - users
-{% endfor %}
+      - shared
 {% endif %}

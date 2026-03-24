@@ -134,21 +134,6 @@ dash.{{ domain_name }} {
 }
 {% endif %}
 {% endfor %}
-
-# Send — basic auth to upload, bypass for download links
-send.{{ home_domain }} {
-    @downloads path /api/download/* /download/*
-    handle @downloads {
-        reverse_proxy 127.0.0.1:{{ xray_portal_listen_port | default(8888) }}
-    }
-    handle {
-        basicauth {
-            admin {{ send_admin_hash }}
-            shared {{ send_shared_hash }}
-        }
-        reverse_proxy 127.0.0.1:{{ xray_portal_listen_port | default(8888) }}
-    }
-}
 {% endif %}
 
 # Main domain - serve personal website

@@ -46,18 +46,33 @@ access_control:
       policy: bypass
     - domain: "grafana.{{ domain_name }}"
       policy: one_factor
+      subject: "group:admins"
     - domain: "prometheus.{{ domain_name }}"
       policy: one_factor
+      subject: "group:admins"
     - domain: "loki.{{ domain_name }}"
       policy: one_factor
+      subject: "group:admins"
     - domain: "dash.{{ domain_name }}"
       policy: one_factor
+      subject: "group:admins"
     # Home server apps (tunneled via Xray)
 {% if home_apps is defined %}
 {% for app in home_apps %}
+{% if app.bypass_paths is defined %}
+    - domain: "{{ app.subdomain }}.{{ home_domain }}"
+      policy: bypass
+      resources:
+{% for path in app.bypass_paths %}
+        - "{{ path }}"
+{% endfor %}
+{% endif %}
 {% if app.auth_required | default(true) %}
     - domain: "{{ app.subdomain }}.{{ home_domain }}"
       policy: one_factor
+{% if not app.shared | default(false) %}
+      subject: "group:admins"
+{% endif %}
 {% else %}
     - domain: "{{ app.subdomain }}.{{ home_domain }}"
       policy: bypass
@@ -68,6 +83,7 @@ access_control:
 {% if claudecodeui_server_ip is defined %}
     - domain: "claude.{{ domain_name }}"
       policy: one_factor
+      subject: "group:admins"
 {% endif %}
     # Remnawave: bypass API endpoints to allow Remnawave's own auth
     - domain: "panel.{{ domain_name }}"
@@ -77,6 +93,7 @@ access_control:
     # Remnawave: protect main UI with Authelia
     - domain: "panel.{{ domain_name }}"
       policy: one_factor
+      subject: "group:admins"
 
 session:
   name: authelia_session
