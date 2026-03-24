@@ -1,0 +1,101 @@
+---
+- name: Create monitoring-agent directory
+  ansible.builtin.file:
+    path: "{{ monitoring_agent_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Create textfile collector directory
+  ansible.builtin.file:
+    path: /opt/node_exporter_textfile
+    state: directory
+    mode: "0755"
+
+- name: Start node_exporter container
+  community.docker.docker_container:
+    name: node_exporter
+    image: "{{ node_exporter_image }}"
+    restart_policy: unless-stopped
+    ports:
+      - "{{ node_exporter_port }}:9100"
+    command: "--path.rootfs=/host --collector.textfile.directory=/textfile"
+    volumes:
+      - "/:/host:ro,rslave"
+      - "/opt/node_exporter_textfile:/textfile:ro"
+
+- name: Start cAdvisor container
+  community.docker.docker_container:
+    name: cadvisor
+    image: "{{ cadvisor_image }}"
+    restart_policy: unless-stopped
+    ports:
+      - "{{ cadvisor_port }}:8080"
+    privileged: yes
+    volumes:
+      - "/:/rootfs:ro"
+      - "/var/run:/var/run:ro"
+      - "/sys:/sys:ro"
+      - "/var/lib/docker/:/var/lib/docker:ro"
+      - "/dev/disk/:/dev/disk:ro"
+    devices:
+      - "/dev/kmsg"
+  when: cadvisor_enabled
+
+- name: Create Docker metrics script
+  copy:
+    content: |
+      #!/bin/bash
+      TEXTFILE_DIR="/opt/node_exporter_textfile"
+      TEMP_FILE="$TEXTFILE_DIR/docker_containers.prom.$$"
+      PROM_FILE="$TEXTFILE_DIR/docker_containers.prom"
+
+      echo "# HELP docker_container_state Container state (1=running, 0=stopped)" > "$TEMP_FILE"
+      echo "# TYPE docker_container_state gauge" >> "$TEMP_FILE"
+      echo "# HELP docker_container_uptime_seconds Container uptime in seconds" >> "$TEMP_FILE"
+      echo "# TYPE docker_container_uptime_seconds gauge" >> "$TEMP_FILE"
+
+      NOW=$(date +%s)
+      docker ps -a --format "{{ '{{' }}.Names{{ '}}' }}\t{{ '{{' }}.State{{ '}}' }}" | while IFS=$'\t' read -r name state; do
+        if [ "$state" == "running" ]; then
+          echo "docker_container_state{container_name=\"$name\",state=\"running\"} 1" >> "$TEMP_FILE"
+          started=$(docker inspect -f '{{ '{{' }}.State.StartedAt{{ '}}' }}' "$name" 2>/dev/null)
+          if [ -n "$started" ]; then
+            started_ts=$(date -d "$started" +%s 2>/dev/null)
+            if [ -n "$started_ts" ]; then
+              uptime=$((NOW - started_ts))
+              echo "docker_container_uptime_seconds{container_name=\"$name\"} $uptime" >> "$TEMP_FILE"
+            fi
+          fi
+        else
+          echo "docker_container_state{container_name=\"$name\",state=\"exited\"} 0" >> "$TEMP_FILE"
+        fi
+      done
+
+      mv "$TEMP_FILE" "$PROM_FILE"
+    dest: /opt/docker-metrics.sh
+    mode: '0755'
+
+- name: Setup Docker metrics cron job
+  cron:
+    name: "Generate Docker metrics"
+    minute: "*"
+    job: "/opt/docker-metrics.sh"
+
+- name: Run Docker metrics script initially
+  command: /opt/docker-metrics.sh
+
+- name: Allow node_exporter port through UFW
+  community.general.ufw:
+    rule: allow
+    port: "{{ node_exporter_port | string }}"
+    proto: tcp
+    from_ip: "{{ monitoring_allow_from }}"
+  when: monitoring_firewall_rule
+
+- name: Allow cAdvisor port through UFW
+  community.general.ufw:
+    rule: allow
+    port: "{{ cadvisor_port | string }}"
+    proto: tcp
+    from_ip: "{{ monitoring_allow_from }}"
+  when: monitoring_firewall_rule and cadvisor_enabled

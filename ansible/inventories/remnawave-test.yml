@@ -79,6 +79,9 @@ all:
       - fail2ban
       - unattended-upgrades
 
+    # Monitoring agent — port 8080 taken by remnawave Caddy
+    cadvisor_port: 8081
+
     # Deployment user configuration
     deployment_user: "deployer"
     deployment_user_ssh_key: ""  # Optional: Add SSH key if needed

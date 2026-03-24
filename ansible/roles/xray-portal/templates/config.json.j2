@@ -31,6 +31,28 @@
       }
     },
     {
+      "tag": "metrics-node-exporter",
+      "port": 9101,
+      "listen": "127.0.0.1",
+      "protocol": "dokodemo-door",
+      "settings": {
+        "address": "127.0.0.1",
+        "port": 9100,
+        "network": "tcp"
+      }
+    },
+    {
+      "tag": "metrics-cadvisor",
+      "port": 9102,
+      "listen": "127.0.0.1",
+      "protocol": "dokodemo-door",
+      "settings": {
+        "address": "127.0.0.1",
+        "port": 8081,
+        "network": "tcp"
+      }
+    },
+    {
       "tag": "interconn",
       "port": {{ xray_portal_interconnect_port }},
       "listen": "0.0.0.0",
@@ -60,7 +82,7 @@
     "rules": [
       {
         "type": "field",
-        "inboundTag": ["external", "ssh-external"],
+        "inboundTag": ["external", "ssh-external", "metrics-node-exporter", "metrics-cadvisor"],
         "outboundTag": "portal"
       },
       {

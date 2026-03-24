@@ -70,6 +70,24 @@
     dest: "{{ grafana_dashboards_directory }}/logs-overview.json"
     mode: '0644'
 
+- name: Generate Caddy dashboard
+  template:
+    src: caddy-overview.json.j2
+    dest: "{{ grafana_dashboards_directory }}/caddy-overview.json"
+    mode: '0644'
+
+- name: Generate Home dashboard
+  template:
+    src: home.json.j2
+    dest: "{{ grafana_dashboards_directory }}/home.json"
+    mode: '0644'
+
+- name: Generate Authelia dashboard
+  template:
+    src: authelia-overview.json.j2
+    dest: "{{ grafana_dashboards_directory }}/authelia-overview.json"
+    mode: '0644'
+
 - name: Start Node Exporter container
   docker_container:
     name: node_exporter
@@ -119,6 +137,8 @@
       GF_AUTH_PROXY_HEADER_PROPERTY: "username"
       GF_AUTH_PROXY_AUTO_SIGN_UP: "true"
       GF_AUTH_PROXY_ENABLE_LOGIN_TOKEN: "false"
+      GF_METRICS_ENABLED: "true"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: "/var/lib/grafana/dashboards/home.json"
       # Additional user info headers
       GF_AUTH_PROXY_HEADERS: "Name:Remote-Name Email:Remote-Email Groups:Remote-Groups"
       # Security settings
@@ -132,6 +152,14 @@
       - "{{ grafana_dashboards_directory }}:/var/lib/grafana/dashboards"
   tags: ['grafana_restart']
 
+- name: Create Loki data directory
+  file:
+    path: "{{ loki_directory }}/data"
+    state: directory
+    mode: '0755'
+    owner: '10001'
+    group: '10001'
+
 - name: Start Loki container
   docker_container:
     name: loki
@@ -141,10 +169,16 @@
     network_mode: host
     volumes:
       - "{{ loki_directory }}/loki.yml:/etc/loki/local-config.yaml"
-    command: 
+      - "{{ loki_directory }}/data:/data"
+    command:
       - -config.file=/etc/loki/local-config.yaml
-      # Configure for reverse proxy
       - -server.path-prefix=/
+
+- name: Create Promtail data directory
+  file:
+    path: "{{ promtail_directory }}/data"
+    state: directory
+    mode: '0755'
 
 - name: Start Promtail container
   docker_container:
@@ -155,9 +189,12 @@
     network_mode: host
     volumes:
       - "{{ promtail_directory }}/promtail.yml:/etc/promtail/config.yml"
+      - "{{ promtail_directory }}/data:/data"
       - /var/log:/var/log:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /run/log/journal:/run/log/journal:ro
+      - /etc/machine-id:/etc/machine-id:ro
     command: -config.file=/etc/promtail/config.yml
 
 - name: Start cAdvisor container
@@ -193,15 +230,26 @@
       
       echo "# HELP docker_container_state Container state (1=running, 0=stopped)" > "$TEMP_FILE"
       echo "# TYPE docker_container_state gauge" >> "$TEMP_FILE"
-      
-      docker ps -a --format "{{ '{{' }}.Names{{ '}}' }}\t{{ '{{' }}.State{{ '}}' }}" | while IFS=$'\t' read -r name state; do
+      echo "# HELP docker_container_uptime_seconds Container uptime in seconds" >> "$TEMP_FILE"
+      echo "# TYPE docker_container_uptime_seconds gauge" >> "$TEMP_FILE"
+
+      NOW=$(date +%s)
+      docker ps -a --format "{{ '{{' }}.Names{{ '}}' }}\t{{ '{{' }}.State{{ '}}' }}\t{{ '{{' }}.CreatedAt{{ '}}' }}" | while IFS=$'\t' read -r name state created; do
         if [ "$state" == "running" ]; then
           echo "docker_container_state{container_name=\"$name\",state=\"running\"} 1" >> "$TEMP_FILE"
+          started=$(docker inspect -f '{{ '{{' }}.State.StartedAt{{ '}}' }}' "$name" 2>/dev/null)
+          if [ -n "$started" ]; then
+            started_ts=$(date -d "$started" +%s 2>/dev/null)
+            if [ -n "$started_ts" ]; then
+              uptime=$((NOW - started_ts))
+              echo "docker_container_uptime_seconds{container_name=\"$name\"} $uptime" >> "$TEMP_FILE"
+            fi
+          fi
         else
           echo "docker_container_state{container_name=\"$name\",state=\"exited\"} 0" >> "$TEMP_FILE"
         fi
       done
-      
+
       mv "$TEMP_FILE" "$PROM_FILE"
     dest: /opt/docker-metrics.sh
     mode: '0755'

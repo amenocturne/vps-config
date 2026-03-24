@@ -1,6 +1,11 @@
 theme: dark
 default_2fa_method: "totp"
 
+telemetry:
+  metrics:
+    enabled: true
+    address: "tcp://0.0.0.0:9959/metrics"
+
 server:
   address: "tcp://0.0.0.0:9091/"
   headers:

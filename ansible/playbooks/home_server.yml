@@ -18,3 +18,8 @@
     - { role: navidrome, tags: ['navidrome'] }
     - { role: webdav, tags: ['webdav'] }
     - { role: send, tags: ['send'] }
+    - role: monitoring-agent
+      tags: ['monitoring']
+      vars:
+        monitoring_firewall_rule: false
+        cadvisor_port: 8081

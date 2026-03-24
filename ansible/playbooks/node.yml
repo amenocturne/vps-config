@@ -22,3 +22,4 @@
     - role: outline-shadowbox
       tags: ['outline']
       when: outline_enabled | default(false)
+    - { role: monitoring-agent, tags: ['monitoring'] }

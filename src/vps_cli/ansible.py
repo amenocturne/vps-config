@@ -61,11 +61,13 @@ TARGET_COMPONENTS: dict[str, dict[str, str]] = {
         "navidrome": "navidrome",
         "webdav": "webdav",
         "send": "send",
+        "monitoring": "monitoring",
     },
     "remnawave": {
         "panel": "remnawave",
         "subscription": "remnawave-subscription",
         "telegram-bot": "remnawave-telegram-bot",
+        "monitoring": "monitoring",
     },
     "claudecodeui": {
         "claudecodeui": "claudecodeui",

@@ -54,6 +54,8 @@ automatic_reboot: false
 
 # Monitoring configuration
 prometheus_retention_time: "15d"
+# Not used for login — Authelia proxy auth handles access.
+# Grafana requires this to be set, so we keep a dummy value.
 grafana_admin_password: "admin"
 
 # Authelia configuration (non-secret variables)

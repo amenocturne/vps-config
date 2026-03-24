@@ -1,136 +1,429 @@
 {
   "id": null,
-  "title": "Docker Containers Overview",
-    "tags": ["docker", "containers"],
-    "style": "dark",
-    "timezone": "browser",
-    "panels": [
+  "uid": "docker-containers",
+  "title": "Docker Containers",
+  "tags": ["docker", "containers"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
       {
-        "id": 1,
-        "title": "Running Containers",
-        "type": "stat",
-        "targets": [
-          {
-            "expr": "count(docker_container_state{state=\"running\"})",
-            "refId": "A"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "unit": "none",
-            "color": {"mode": "fixed", "fixedColor": "green"}
-          }
-        },
-        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0}
+        "name": "server",
+        "label": "Server",
+        "type": "query",
+        "query": "label_values(node_uname_info, server)",
+        "datasource": "Prometheus",
+        "multi": false,
+        "includeAll": false,
+        "refresh": 2,
+        "sort": 1,
+        "current": {}
       },
       {
-        "id": 2,
-        "title": "Container CPU Usage",
-        "type": "timeseries",
-        "targets": [
-          {
-            "expr": "rate(container_cpu_usage_seconds_total{name!=\"\"}[5m]) * 100",
-            "refId": "A",
-            "legendFormat": "{{ '{{' }}name{{ '}}' }}"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "unit": "percent"
-          }
-        },
-        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4}
-      },
-      {
-        "id": 3,
-        "title": "Container Memory Usage",
-        "type": "timeseries",
-        "targets": [
-          {
-            "expr": "container_memory_usage_bytes{name!=\"\"}",
-            "refId": "A",
-            "legendFormat": "{{ '{{' }}name{{ '}}' }}"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "unit": "bytes"
-          }
-        },
-        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4}
-      },
-      {
-        "id": 4,
-        "title": "Container Network I/O",
-        "type": "timeseries",
-        "targets": [
-          {
-            "expr": "sum by (name) (rate(container_network_receive_bytes_total{name!=\"\"}[5m]) + rate(container_network_transmit_bytes_total{name!=\"\"}[5m]))",
-            "refId": "A",
-            "legendFormat": "{{ '{{' }}name{{ '}}' }}"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "unit": "Bps"
+        "name": "container",
+        "label": "Container",
+        "type": "query",
+        "query": "label_values(container_cpu_usage_seconds_total{name!=\"\",server=\"$server\"}, name)",
+        "datasource": "Prometheus",
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "refresh": 2,
+        "sort": 1,
+        "current": {}
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Running",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "count(docker_container_state{state=\"running\",server=\"$server\"})",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
           }
         },
-        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 12}
+        "overrides": []
       },
-      {
-        "id": 5,
-        "title": "Container Status",
-        "type": "table",
-        "targets": [
-          {
-            "expr": "docker_container_state",
-            "refId": "A",
-            "format": "table",
-            "instant": true
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"]
+        },
+        "graphMode": "none",
+        "colorMode": "value"
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 }
+    },
+    {
+      "id": 2,
+      "title": "Stopped",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "count(docker_container_state{state=\"exited\",server=\"$server\"}) OR vector(0)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "red"
           }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "custom": {
-              "displayMode": "color-background"
-            },
-            "mappings": [
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"]
+        },
+        "graphMode": "none",
+        "colorMode": "value"
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 0 }
+    },
+    {
+      "id": 3,
+      "title": "Total CPU",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(rate(container_cpu_usage_seconds_total{name=~\"$container\",server=\"$server\"}[1m])) * 100",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"]
+        },
+        "graphMode": "none",
+        "colorMode": "value"
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 0 }
+    },
+    {
+      "id": 4,
+      "title": "Total Memory",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(container_memory_usage_bytes{name=~\"$container\",server=\"$server\"})",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"]
+        },
+        "graphMode": "none",
+        "colorMode": "value"
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 0 }
+    },
+    {
+      "id": 5,
+      "title": "Net RX",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(rate(container_network_receive_bytes_total{name=~\"$container\",server=\"$server\"}[1m]))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"]
+        },
+        "graphMode": "none",
+        "colorMode": "value"
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 0 }
+    },
+    {
+      "id": 6,
+      "title": "Net TX",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(rate(container_network_transmit_bytes_total{name=~\"$container\",server=\"$server\"}[1m]))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"]
+        },
+        "graphMode": "none",
+        "colorMode": "value"
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 0 }
+    },
+    {
+      "id": 7,
+      "title": "Container CPU",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "rate(container_cpu_usage_seconds_total{name=~\"$container\",server=\"$server\"}[1m]) * 100",
+          "refId": "A",
+          "legendFormat": "{{ '{{' }}name{{ '}}' }}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 }
+    },
+    {
+      "id": 8,
+      "title": "Container Memory",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "container_memory_usage_bytes{name=~\"$container\",server=\"$server\"}",
+          "refId": "A",
+          "legendFormat": "{{ '{{' }}name{{ '}}' }}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 }
+    },
+    {
+      "id": 9,
+      "title": "Network RX",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum by (name)(rate(container_network_receive_bytes_total{name=~\"$container\",server=\"$server\"}[1m]))",
+          "refId": "A",
+          "legendFormat": "{{ '{{' }}name{{ '}}' }}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps"
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 }
+    },
+    {
+      "id": 10,
+      "title": "Network TX",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum by (name)(rate(container_network_transmit_bytes_total{name=~\"$container\",server=\"$server\"}[1m]))",
+          "refId": "A",
+          "legendFormat": "{{ '{{' }}name{{ '}}' }}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps"
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 }
+    },
+    {
+      "id": 11,
+      "title": "Container Status",
+      "type": "table",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "docker_container_state{server=\"$server\"}",
+          "refId": "A",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "cellOptions": { "type": "auto" }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Status" },
+            "properties": [
               {
-                "options": {
-                  "1": {
-                    "text": "Running",
-                    "color": "green"
-                  },
-                  "0": {
-                    "text": "Stopped",
-                    "color": "red"
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "1": { "text": "Running", "color": "dark-green", "index": 0 },
+                      "0": { "text": "Stopped", "color": "dark-red", "index": 1 }
+                    }
                   }
-                },
-                "type": "value"
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": { "type": "color-background", "mode": "basic" }
+              },
+              {
+                "id": "custom.align",
+                "value": "center"
+              },
+              {
+                "id": "custom.width",
+                "value": 150
               }
             ]
           }
-        },
-        "transformations": [
-          {
-            "id": "organize",
-            "options": {
-              "includeByName": {
-                "container_name": true,
-                "Value": true
-              },
-              "renameByName": {
-                "container_name": "Container Name",
-                "Value": "Status"
-              }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "includeByName": {
+              "container_name": true,
+              "Value": true
+            },
+            "renameByName": {
+              "container_name": "Container",
+              "Value": "Status"
             }
           }
-        ],
-        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 20}
-      }
-    ],
-    "time": {"from": "now-1h", "to": "now"},
-    "refresh": "5s",
-    "schemaVersion": 30,
-  "version": 1
+        }
+      ],
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 20 }
+    },
+    {
+      "id": 12,
+      "title": "Container Uptime",
+      "type": "bargauge",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "docker_container_uptime_seconds{server=\"$server\"}",
+          "refId": "A",
+          "legendFormat": "{{ '{{' }}container_name{{ '}}' }}",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "value": null, "color": "red" },
+              { "value": 300, "color": "yellow" },
+              { "value": 3600, "color": "green" }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"]
+        },
+        "orientation": "horizontal",
+        "displayMode": "gradient"
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 28 }
+    }
+  ]
 }

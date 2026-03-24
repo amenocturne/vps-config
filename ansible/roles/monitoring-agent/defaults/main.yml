@@ -1,0 +1,9 @@
+---
+monitoring_agent_dir: "/opt/monitoring-agent"
+node_exporter_image: "prom/node-exporter:latest"
+node_exporter_port: 9100
+cadvisor_enabled: true
+cadvisor_image: "gcr.io/cadvisor/cadvisor:latest"
+cadvisor_port: 8080
+monitoring_allow_from: "{{ main_server_ip | default('168.100.11.130') }}"
+monitoring_firewall_rule: true
