@@ -304,11 +304,11 @@ class Handler(BaseHTTPRequestHandler):
             stop_mc()
 
             current = get_active_name()
-            if current:
-                log.info("Archiving current world '%s'", current)
-                archive_current_world(current)
-            else:
-                remove_active_world_dirs()
+            if not current:
+                current = f"unnamed-{int(time.time())}"
+                log.info("Current world unnamed, auto-archiving as '%s'", current)
+            log.info("Archiving current world '%s'", current)
+            archive_current_world(current)
 
             restore_world(name)
             fix_world_permissions()
