@@ -50,8 +50,7 @@ services:
     image: python:3.12-slim
     container_name: mc-manager
     restart: unless-stopped
-    ports:
-      - "{{ minecraft_manager_port }}:{{ minecraft_manager_port }}"
+    network_mode: host
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - {{ minecraft_dir }}/data:/data

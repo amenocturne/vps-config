@@ -81,33 +81,64 @@ def _recv_exact(sock: socket.socket, n: int) -> bytes:
 # Docker helpers
 # ---------------------------------------------------------------------------
 
+DOCKER_SOCKET = "/var/run/docker.sock"
+
+
+def _docker_api(method: str, path: str, timeout: int = 120) -> int:
+    """Call Docker Engine API via Unix socket. Returns HTTP status code."""
+    import http.client
+    conn = http.client.HTTPConnection("localhost", timeout=timeout)
+    conn.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    conn.sock.connect(DOCKER_SOCKET)
+    conn.sock.settimeout(timeout)
+    conn.request(method, path)
+    resp = conn.getresponse()
+    resp.read()
+    status = resp.status
+    conn.close()
+    return status
+
+
+def _docker_get(path: str) -> dict:
+    """GET from Docker Engine API, return parsed JSON."""
+    import http.client
+    conn = http.client.HTTPConnection("localhost", timeout=10)
+    conn.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    conn.sock.connect(DOCKER_SOCKET)
+    conn.sock.settimeout(10)
+    conn.request("GET", path)
+    resp = conn.getresponse()
+    data = json.loads(resp.read())
+    conn.close()
+    return data
+
+
 def stop_mc() -> None:
     log.info("Stopping Minecraft containers")
-    subprocess.run(
-        ["docker", "stop", "mc-monitor", "minecraft"],
-        timeout=120, check=True,
-    )
+    _docker_api("POST", "/containers/mc-monitor/stop?t=10")
+    _docker_api("POST", "/containers/minecraft/stop?t=30")
     log.info("Minecraft containers stopped")
 
 
 def start_mc() -> None:
     log.info("Starting Minecraft container")
-    subprocess.run(["docker", "start", "minecraft"], timeout=60, check=True)
+    _docker_api("POST", "/containers/minecraft/start")
 
     log.info("Waiting for Minecraft to become healthy")
     for i in range(60):
-        result = subprocess.run(
-            ["docker", "inspect", "--format", "{% raw %}{{.State.Health.Status}}{% endraw %}", "minecraft"],
-            capture_output=True, text=True, timeout=10,
-        )
-        if result.stdout.strip() == "healthy":
-            log.info("Minecraft is healthy after %d checks", i + 1)
-            break
+        try:
+            data = _docker_get("/containers/minecraft/json")
+            health = data.get("State", {}).get("Health", {}).get("Status", "")
+            if health == "healthy":
+                log.info("Minecraft is healthy after %d checks", i + 1)
+                break
+        except Exception:
+            pass
         time.sleep(5)
     else:
         log.warning("Minecraft did not become healthy within 5 minutes, starting monitor anyway")
 
-    subprocess.run(["docker", "start", "mc-monitor"], timeout=60, check=True)
+    _docker_api("POST", "/containers/mc-monitor/start")
     log.info("mc-monitor started")
 
 
