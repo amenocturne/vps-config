@@ -45,3 +45,19 @@ services:
     environment:
       EXPORT_SERVERS: "localhost:25565"
       EXPORT_PORT: "{{ minecraft_monitor_port }}"
+
+  mc-manager:
+    image: python:3.12-slim
+    container_name: mc-manager
+    restart: unless-stopped
+    ports:
+      - "{{ minecraft_manager_port }}:{{ minecraft_manager_port }}"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - {{ minecraft_dir }}/data:/data
+      - {{ minecraft_dir }}/worlds:/worlds
+      - {{ minecraft_dir }}/mc-manager.py:/app/mc-manager.py:ro
+    command: python /app/mc-manager.py
+    environment:
+      RCON_PASSWORD: "{{ minecraft_rcon_password }}"
+      MANAGER_PORT: "{{ minecraft_manager_port }}"

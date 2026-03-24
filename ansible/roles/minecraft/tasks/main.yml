@@ -9,6 +9,14 @@
     - "{{ minecraft_dir }}/data"
     - "{{ minecraft_dir }}/plugins"
     - "{{ minecraft_dir }}/backups"
+    - "{{ minecraft_dir }}/worlds"
+
+- name: Deploy world manager script
+  template:
+    src: mc-manager.py.j2
+    dest: "{{ minecraft_dir }}/mc-manager.py"
+    mode: '0644'
+  notify: restart minecraft
 
 - name: Deploy minecraft docker-compose
   template:

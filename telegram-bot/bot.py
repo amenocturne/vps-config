@@ -17,6 +17,8 @@ from telegram.ext import (
     filters,
 )
 
+import httpx
+
 from config import BOT_TOKEN, ADMIN_TELEGRAM_ID, CLIENT_TYPES, SUBSCRIPTION_BASE_URL
 import remnawave
 import monitoring
@@ -277,7 +279,8 @@ def _mc_menu_keyboard() -> InlineKeyboardMarkup:
          InlineKeyboardButton("👥 Online", callback_data="mc:online")],
         [InlineKeyboardButton("➕ Add Player", callback_data="mc:add_prompt"),
          InlineKeyboardButton("➖ Remove Player", callback_data="mc:remove_prompt")],
-        [InlineKeyboardButton("📊 Status", callback_data="mc:status")],
+        [InlineKeyboardButton("📊 Status", callback_data="mc:status"),
+         InlineKeyboardButton("🌍 Worlds", callback_data="mc:worlds")],
     ])
 
 
@@ -397,6 +400,88 @@ async def _mc_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             reply_markup=_mc_menu_keyboard(),
         )
 
+    elif action == "worlds":
+        await query.answer()
+        try:
+            data = await minecraft.get_worlds()
+            seed = await minecraft.get_seed()
+            active = data.get("active", "—")
+            worlds = data.get("worlds", [])
+            text = f"🌍 World Management\n\nActive: <b>{active or 'new world'}</b>\nSeed: <code>{seed}</code>\nArchived: {len(worlds)}"
+        except Exception:
+            text = "🌍 World Management\n\n❌ Cannot reach world manager"
+        keyboard = [
+            [InlineKeyboardButton("🆕 New World", callback_data="mc:world_new_prompt"),
+             InlineKeyboardButton("🔄 Switch World", callback_data="mc:world_switch_list")],
+            [InlineKeyboardButton("🗑 Delete World", callback_data="mc:world_delete_list")],
+            [InlineKeyboardButton("⬅️ Back", callback_data="mc:back")],
+        ]
+        await query.message.reply_text(text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup(keyboard))
+
+    elif action == "world_new_prompt":
+        await query.answer()
+        context.user_data["mc_action"] = "new_world"
+        await query.message.reply_text(
+            "Enter a name to archive the current world as\n(e.g. <code>survival-1</code>, <code>parkour</code>):",
+            parse_mode="HTML",
+        )
+
+    elif action == "world_switch_list":
+        await query.answer()
+        try:
+            data = await minecraft.get_worlds()
+            worlds = data.get("worlds", [])
+        except Exception:
+            await query.message.reply_text("❌ Cannot reach world manager")
+            return
+        if not worlds:
+            await query.message.reply_text("No archived worlds yet.", reply_markup=_mc_menu_keyboard())
+            return
+        keyboard = [
+            [InlineKeyboardButton(f"🔄 {w}", callback_data=f"mc:world_switch:{w}")]
+            for w in worlds
+        ]
+        keyboard.append([InlineKeyboardButton("⬅️ Back", callback_data="mc:worlds")])
+        await query.message.reply_text("Select world to switch to:", reply_markup=InlineKeyboardMarkup(keyboard))
+
+    elif action.startswith("world_switch:"):
+        name = action.removeprefix("world_switch:")
+        await query.answer()
+        await query.message.reply_text(f"🔄 Switching to <b>{name}</b>...\nServer will restart.", parse_mode="HTML")
+        try:
+            result = await minecraft.switch_world(name)
+            await query.message.reply_text(f"✅ Switched to <b>{name}</b>", parse_mode="HTML", reply_markup=_mc_menu_keyboard())
+        except Exception as e:
+            await query.message.reply_text(f"❌ Failed to switch: {e}", reply_markup=_mc_menu_keyboard())
+
+    elif action == "world_delete_list":
+        await query.answer()
+        try:
+            data = await minecraft.get_worlds()
+            worlds = data.get("worlds", [])
+            active = data.get("active", "")
+        except Exception:
+            await query.message.reply_text("❌ Cannot reach world manager")
+            return
+        if not worlds:
+            await query.message.reply_text("No archived worlds to delete.", reply_markup=_mc_menu_keyboard())
+            return
+        keyboard = [
+            [InlineKeyboardButton(f"🗑 {w}", callback_data=f"mc:world_delete:{w}")]
+            for w in worlds if w != active
+        ]
+        keyboard.append([InlineKeyboardButton("⬅️ Back", callback_data="mc:worlds")])
+        await query.message.reply_text("Select world to delete:", reply_markup=InlineKeyboardMarkup(keyboard))
+
+    elif action.startswith("world_delete:"):
+        name = action.removeprefix("world_delete:")
+        await query.answer()
+        try:
+            await minecraft.delete_world(name)
+            await query.message.reply_text(f"✅ Deleted world <b>{name}</b>", parse_mode="HTML", reply_markup=_mc_menu_keyboard())
+        except Exception as e:
+            await query.message.reply_text(f"❌ Failed to delete: {e}", reply_markup=_mc_menu_keyboard())
+
 
 async def _mc_player_name_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle text input when waiting for a player name to add to whitelist."""
@@ -405,6 +490,23 @@ async def _mc_player_name_handler(update: Update, context: ContextTypes.DEFAULT_
         return
 
     mc_action = context.user_data.pop("mc_action", None)
+    if mc_action == "new_world":
+        name = update.message.text.strip()
+        if not name or "/" in name or len(name) > 30:
+            await update.message.reply_text("Invalid name. Use 1-30 characters, no slashes.", reply_markup=_mc_menu_keyboard())
+            return
+        await update.message.reply_text(f"🆕 Archiving current world as <b>{name}</b> and generating new world...\nServer will restart.", parse_mode="HTML")
+        try:
+            result = await minecraft.new_world(name)
+            await update.message.reply_text(f"✅ New world created! Previous archived as <b>{name}</b>", parse_mode="HTML", reply_markup=_mc_menu_keyboard())
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 409:
+                await update.message.reply_text(f"❌ World <b>{name}</b> already exists. Choose a different name.", parse_mode="HTML", reply_markup=_mc_menu_keyboard())
+            else:
+                await update.message.reply_text(f"❌ Failed: {e}", reply_markup=_mc_menu_keyboard())
+        except Exception as e:
+            await update.message.reply_text(f"❌ Failed: {e}", reply_markup=_mc_menu_keyboard())
+        return
     if mc_action != "add":
         return  # Not waiting for MC input, let fallback handle it
 

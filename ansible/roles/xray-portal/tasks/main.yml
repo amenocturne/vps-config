@@ -52,3 +52,11 @@
     proto: tcp
     from_ip: "{{ remnawave_server_ip }}"
     comment: "Minecraft RCON (from remnawave bot only)"
+
+- name: Allow Minecraft manager from remnawave
+  ufw:
+    rule: allow
+    port: "8585"
+    proto: tcp
+    from_ip: "{{ remnawave_server_ip }}"
+    comment: "Minecraft world manager (from remnawave bot only)"

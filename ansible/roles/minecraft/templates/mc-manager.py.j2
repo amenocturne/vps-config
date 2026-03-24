@@ -1,0 +1,343 @@
+#!/usr/bin/env python3
+"""Minecraft world manager HTTP API.
+
+Runs as a Docker sidecar with access to the Docker socket and MC data volume.
+Manages world archiving, switching, and creation.
+"""
+
+import json
+import logging
+import os
+import shutil
+import socket
+import struct
+import subprocess
+import time
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
+
+MC_DATA_DIR = Path(os.environ.get("MC_DATA_DIR", "/data"))
+MC_WORLDS_DIR = Path(os.environ.get("MC_WORLDS_DIR", "/worlds"))
+RCON_PASSWORD = os.environ.get("RCON_PASSWORD", "")
+MANAGER_PORT = int(os.environ.get("MANAGER_PORT", "8585"))
+
+WORLD_DIRS = ["world", "world_nether", "world_the_end"]
+ACTIVE_FILE = MC_WORLDS_DIR / ".active"
+
+RCON_HOST = "localhost"
+RCON_PORT = 25575
+
+log = logging.getLogger("mc-manager")
+
+
+# ---------------------------------------------------------------------------
+# RCON client
+# ---------------------------------------------------------------------------
+
+def rcon_command(command: str) -> str:
+    """Send an RCON command and return the response."""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(10)
+    try:
+        sock.connect((RCON_HOST, RCON_PORT))
+
+        # Login packet (type 3)
+        _rcon_send(sock, 1, 3, RCON_PASSWORD)
+        _rcon_recv(sock)
+
+        # Command packet (type 2)
+        _rcon_send(sock, 2, 2, command)
+        resp = _rcon_recv(sock)
+        return resp
+    finally:
+        sock.close()
+
+
+def _rcon_send(sock: socket.socket, req_id: int, pkt_type: int, payload: str) -> None:
+    data = struct.pack("<ii", req_id, pkt_type) + payload.encode("utf-8") + b"\x00\x00"
+    sock.sendall(struct.pack("<i", len(data)) + data)
+
+
+def _rcon_recv(sock: socket.socket) -> str:
+    raw_len = _recv_exact(sock, 4)
+    length = struct.unpack("<i", raw_len)[0]
+    data = _recv_exact(sock, length)
+    # data layout: req_id (4) + type (4) + payload + \x00\x00
+    payload = data[8:-2]
+    return payload.decode("utf-8", errors="replace")
+
+
+def _recv_exact(sock: socket.socket, n: int) -> bytes:
+    buf = b""
+    while len(buf) < n:
+        chunk = sock.recv(n - len(buf))
+        if not chunk:
+            raise ConnectionError("RCON connection closed")
+        buf += chunk
+    return buf
+
+
+# ---------------------------------------------------------------------------
+# Docker helpers
+# ---------------------------------------------------------------------------
+
+def stop_mc() -> None:
+    log.info("Stopping Minecraft containers")
+    subprocess.run(
+        ["docker", "stop", "mc-monitor", "minecraft"],
+        timeout=120, check=True,
+    )
+    log.info("Minecraft containers stopped")
+
+
+def start_mc() -> None:
+    log.info("Starting Minecraft container")
+    subprocess.run(["docker", "start", "minecraft"], timeout=60, check=True)
+
+    log.info("Waiting for Minecraft to become healthy")
+    for i in range(60):
+        result = subprocess.run(
+            ["docker", "inspect", "--format", "{% raw %}{{.State.Health.Status}}{% endraw %}", "minecraft"],
+            capture_output=True, text=True, timeout=10,
+        )
+        if result.stdout.strip() == "healthy":
+            log.info("Minecraft is healthy after %d checks", i + 1)
+            break
+        time.sleep(5)
+    else:
+        log.warning("Minecraft did not become healthy within 5 minutes, starting monitor anyway")
+
+    subprocess.run(["docker", "start", "mc-monitor"], timeout=60, check=True)
+    log.info("mc-monitor started")
+
+
+# ---------------------------------------------------------------------------
+# World helpers
+# ---------------------------------------------------------------------------
+
+def get_active_name() -> str:
+    if ACTIVE_FILE.exists():
+        return ACTIVE_FILE.read_text().strip()
+    return ""
+
+
+def set_active_name(name: str) -> None:
+    ACTIVE_FILE.write_text(name)
+
+
+def list_worlds() -> list[str]:
+    if not MC_WORLDS_DIR.exists():
+        return []
+    return sorted(
+        d.name for d in MC_WORLDS_DIR.iterdir()
+        if d.is_dir() and any((d / w).exists() for w in WORLD_DIRS)
+    )
+
+
+def archive_current_world(archive_name: str) -> None:
+    dest = MC_WORLDS_DIR / archive_name
+    dest.mkdir(parents=True, exist_ok=True)
+    for w in WORLD_DIRS:
+        src = MC_DATA_DIR / w
+        if src.exists():
+            log.info("Moving %s -> %s", src, dest / w)
+            shutil.move(str(src), str(dest / w))
+
+
+def restore_world(name: str) -> None:
+    src = MC_WORLDS_DIR / name
+    for w in WORLD_DIRS:
+        world_src = src / w
+        world_dst = MC_DATA_DIR / w
+        if world_src.exists():
+            log.info("Copying %s -> %s", world_src, world_dst)
+            shutil.copytree(str(world_src), str(world_dst))
+
+
+def remove_active_world_dirs() -> None:
+    for w in WORLD_DIRS:
+        p = MC_DATA_DIR / w
+        if p.exists():
+            log.info("Removing %s", p)
+            shutil.rmtree(str(p))
+
+
+# ---------------------------------------------------------------------------
+# HTTP handler
+# ---------------------------------------------------------------------------
+
+class Handler(BaseHTTPRequestHandler):
+
+    def do_GET(self):
+        if self.path == "/api/worlds":
+            self._handle_list_worlds()
+        elif self.path == "/api/seed":
+            self._handle_seed()
+        else:
+            self._respond(404, {"error": "not found"})
+
+    def do_POST(self):
+        if self.path == "/api/worlds/new":
+            self._handle_new_world()
+        elif self.path == "/api/worlds/switch":
+            self._handle_switch_world()
+        else:
+            self._respond(404, {"error": "not found"})
+
+    def do_DELETE(self):
+        # Match /api/worlds/{name}
+        prefix = "/api/worlds/"
+        if self.path.startswith(prefix) and len(self.path) > len(prefix):
+            name = self.path[len(prefix):].strip("/")
+            if name:
+                self._handle_delete_world(name)
+                return
+        self._respond(404, {"error": "not found"})
+
+    # --- Handlers ---
+
+    def _handle_list_worlds(self):
+        self._respond(200, {
+            "active": get_active_name(),
+            "worlds": list_worlds(),
+        })
+
+    def _handle_seed(self):
+        try:
+            resp = rcon_command("seed")
+            # Response looks like: "Seed: [-1234567890]"
+            start = resp.find("[")
+            end = resp.find("]")
+            if start != -1 and end != -1:
+                seed = resp[start + 1:end]
+            else:
+                seed = resp.strip()
+            self._respond(200, {"seed": seed})
+        except Exception as e:
+            log.exception("Failed to get seed via RCON")
+            self._respond(500, {"error": f"RCON failed: {e}"})
+
+    def _handle_new_world(self):
+        body = self._read_json()
+        if body is None:
+            return
+
+        archive_name = body.get("archive_name", "").strip()
+        if not archive_name:
+            self._respond(400, {"error": "archive_name is required"})
+            return
+
+        if (MC_WORLDS_DIR / archive_name).exists():
+            self._respond(409, {"error": f"world '{archive_name}' already exists"})
+            return
+
+        try:
+            log.info("Creating new world, archiving current as '%s'", archive_name)
+            stop_mc()
+            archive_current_world(archive_name)
+            set_active_name("")
+            start_mc()
+            self._respond(200, {"status": "ok", "archived_as": archive_name})
+        except Exception as e:
+            log.exception("Failed to create new world")
+            self._respond(500, {"error": str(e)})
+
+    def _handle_switch_world(self):
+        body = self._read_json()
+        if body is None:
+            return
+
+        name = body.get("name", "").strip()
+        if not name:
+            self._respond(400, {"error": "name is required"})
+            return
+
+        if not (MC_WORLDS_DIR / name).exists():
+            self._respond(404, {"error": f"world '{name}' not found"})
+            return
+
+        try:
+            log.info("Switching to world '%s'", name)
+            stop_mc()
+
+            current = get_active_name()
+            if current:
+                log.info("Archiving current world '%s'", current)
+                archive_current_world(current)
+            else:
+                remove_active_world_dirs()
+
+            restore_world(name)
+            set_active_name(name)
+            start_mc()
+            self._respond(200, {"status": "ok", "active": name})
+        except Exception as e:
+            log.exception("Failed to switch world")
+            self._respond(500, {"error": str(e)})
+
+    def _handle_delete_world(self, name: str):
+        world_path = MC_WORLDS_DIR / name
+        if not world_path.exists():
+            self._respond(404, {"error": f"world '{name}' not found"})
+            return
+
+        if get_active_name() == name:
+            self._respond(409, {"error": f"cannot delete active world '{name}'"})
+            return
+
+        try:
+            log.info("Deleting world '%s'", name)
+            shutil.rmtree(str(world_path))
+            self._respond(200, {"status": "ok", "deleted": name})
+        except Exception as e:
+            log.exception("Failed to delete world")
+            self._respond(500, {"error": str(e)})
+
+    # --- Helpers ---
+
+    def _read_json(self) -> dict | None:
+        content_length = int(self.headers.get("Content-Length", 0))
+        if content_length == 0:
+            self._respond(400, {"error": "empty request body"})
+            return None
+        try:
+            raw = self.rfile.read(content_length)
+            return json.loads(raw)
+        except (json.JSONDecodeError, ValueError) as e:
+            self._respond(400, {"error": f"invalid JSON: {e}"})
+            return None
+
+    def _respond(self, status: int, data: dict) -> None:
+        body = json.dumps(data).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, format, *args):
+        log.info(format, *args)
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+def main():
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(name)s] %(levelname)s %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+    MC_WORLDS_DIR.mkdir(parents=True, exist_ok=True)
+
+    log.info("Starting mc-manager on port %d", MANAGER_PORT)
+    log.info("MC_DATA_DIR=%s MC_WORLDS_DIR=%s", MC_DATA_DIR, MC_WORLDS_DIR)
+
+    server = HTTPServer(("0.0.0.0", MANAGER_PORT), Handler)
+    server.serve_forever()
+
+
+if __name__ == "__main__":
+    main()

@@ -15,4 +15,4 @@ minecraft_pvp: "true"
 minecraft_online_mode: "false"
 minecraft_view_distance: 10
 minecraft_motd: "Welcome to the server"
-minecraft_auth_plugin_url: "https://github.com/MiguVerse/LibreLoginNext/releases/download/0.25.3/LibreLoginNext.jar"
+minecraft_manager_port: 8585

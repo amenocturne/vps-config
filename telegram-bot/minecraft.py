@@ -3,7 +3,9 @@ import re
 import struct
 import logging
 
-from config import MINECRAFT_RCON_HOST, MINECRAFT_RCON_PORT, MINECRAFT_RCON_PASSWORD
+import httpx
+
+from config import MINECRAFT_RCON_HOST, MINECRAFT_RCON_PORT, MINECRAFT_RCON_PASSWORD, MINECRAFT_MANAGER_PORT
 
 logger = logging.getLogger(__name__)
 
@@ -147,6 +149,49 @@ async def check_rejected_logins() -> list[str]:
             return [r["metric"].get("player", "unknown") for r in results]
     except Exception:
         return []
+
+
+_MANAGER_URL = f"http://{MINECRAFT_RCON_HOST}:{MINECRAFT_MANAGER_PORT}"
+
+
+async def get_worlds() -> dict:
+    """Get list of worlds and active world name."""
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        r = await client.get(f"{_MANAGER_URL}/api/worlds")
+        r.raise_for_status()
+        return r.json()
+
+
+async def get_seed() -> str:
+    """Get current world seed."""
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        r = await client.get(f"{_MANAGER_URL}/api/seed")
+        r.raise_for_status()
+        return r.json().get("seed", "unknown")
+
+
+async def new_world(archive_name: str) -> dict:
+    """Archive current world and generate a new one. Takes ~30-60s."""
+    async with httpx.AsyncClient(timeout=300.0) as client:
+        r = await client.post(f"{_MANAGER_URL}/api/worlds/new", json={"archive_name": archive_name})
+        r.raise_for_status()
+        return r.json()
+
+
+async def switch_world(name: str) -> dict:
+    """Switch to a different world. Takes ~30-60s."""
+    async with httpx.AsyncClient(timeout=300.0) as client:
+        r = await client.post(f"{_MANAGER_URL}/api/worlds/switch", json={"name": name})
+        r.raise_for_status()
+        return r.json()
+
+
+async def delete_world(name: str) -> dict:
+    """Delete an archived world."""
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        r = await client.delete(f"{_MANAGER_URL}/api/worlds/{name}")
+        r.raise_for_status()
+        return r.json()
 
 
 async def is_online() -> bool:
