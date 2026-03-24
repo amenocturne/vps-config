@@ -1,0 +1,18 @@
+---
+minecraft_dir: "/opt/minecraft"
+minecraft_image: "itzg/minecraft-server:java21"
+minecraft_monitor_image: "itzg/mc-monitor:latest"
+minecraft_version: "LATEST"
+minecraft_type: "PAPER"
+minecraft_memory: "4G"
+minecraft_port: 25565
+minecraft_rcon_port: 25575
+minecraft_monitor_port: 9225
+minecraft_max_players: 20
+minecraft_difficulty: "normal"
+minecraft_gamemode: "survival"
+minecraft_pvp: "true"
+minecraft_online_mode: "false"
+minecraft_view_distance: 10
+minecraft_motd: "Welcome to the server"
+minecraft_auth_plugin_url: "https://github.com/MiguVerse/LibreLoginNext/releases/download/0.25.3/LibreLoginNext.jar"

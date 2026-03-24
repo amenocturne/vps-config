@@ -1,0 +1,30 @@
+DataSource:
+  backend: SQLITE
+
+settings:
+  sessions:
+    enabled: true
+    timeout: 10080
+    sessionExpireOnIpChange: true
+  registration:
+    enabled: true
+    force: true
+    forceKickMessage: 'You must register first! Use /register <password> <password>'
+  login:
+    timeout: 60
+    maxLoginPerIp: 2
+  restrictions:
+    maxRegPerIp: 2
+    allowedNicknameCharacters: '[a-zA-Z0-9_]*'
+    minNicknameLength: 3
+    maxNicknameLength: 16
+    allowMovement: false
+    allowCommands: []
+    timeout: 120
+  security:
+    minPasswordLength: 6
+    maxPasswordLength: 30
+    passwordHash: SHA256
+
+GroupOptions:
+  enablePermissionCheck: false

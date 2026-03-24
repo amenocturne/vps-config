@@ -53,6 +53,39 @@
       }
     },
     {
+      "tag": "minecraft",
+      "port": 25565,
+      "listen": "0.0.0.0",
+      "protocol": "dokodemo-door",
+      "settings": {
+        "address": "127.0.0.1",
+        "port": 25565,
+        "network": "tcp"
+      }
+    },
+    {
+      "tag": "minecraft-rcon",
+      "port": 25575,
+      "listen": "0.0.0.0",
+      "protocol": "dokodemo-door",
+      "settings": {
+        "address": "127.0.0.1",
+        "port": 25575,
+        "network": "tcp"
+      }
+    },
+    {
+      "tag": "minecraft-metrics",
+      "port": 9225,
+      "listen": "127.0.0.1",
+      "protocol": "dokodemo-door",
+      "settings": {
+        "address": "127.0.0.1",
+        "port": 9225,
+        "network": "tcp"
+      }
+    },
+    {
       "tag": "interconn",
       "port": {{ xray_portal_interconnect_port }},
       "listen": "0.0.0.0",
@@ -82,7 +115,7 @@
     "rules": [
       {
         "type": "field",
-        "inboundTag": ["external", "ssh-external", "metrics-node-exporter", "metrics-cadvisor"],
+        "inboundTag": ["external", "ssh-external", "metrics-node-exporter", "metrics-cadvisor", "minecraft", "minecraft-rcon", "minecraft-metrics"],
         "outboundTag": "portal"
       },
       {

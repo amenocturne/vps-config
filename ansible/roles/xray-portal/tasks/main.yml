@@ -37,3 +37,18 @@
     port: "{{ xray_portal_ssh_port }}"
     proto: tcp
     comment: "SSH tunnel to home server"
+
+- name: Allow Minecraft game port
+  ufw:
+    rule: allow
+    port: "25565"
+    proto: tcp
+    comment: "Minecraft game server (tunneled to home)"
+
+- name: Allow Minecraft RCON from remnawave
+  ufw:
+    rule: allow
+    port: "25575"
+    proto: tcp
+    from_ip: "{{ remnawave_server_ip }}"
+    comment: "Minecraft RCON (from remnawave bot only)"

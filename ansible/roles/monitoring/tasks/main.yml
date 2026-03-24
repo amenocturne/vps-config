@@ -88,6 +88,12 @@
     dest: "{{ grafana_dashboards_directory }}/authelia-overview.json"
     mode: '0644'
 
+- name: Generate Minecraft dashboard
+  template:
+    src: minecraft-overview.json.j2
+    dest: "{{ grafana_dashboards_directory }}/minecraft-overview.json"
+    mode: '0644'
+
 - name: Start Node Exporter container
   docker_container:
     name: node_exporter

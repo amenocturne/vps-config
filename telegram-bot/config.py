@@ -14,6 +14,9 @@ REMNAWAVE_API_TOKEN: str = _require("REMNAWAVE_API_TOKEN")
 ADMIN_TELEGRAM_ID: int = int(_require("ADMIN_TELEGRAM_ID"))
 SUBSCRIPTION_BASE_URL: str = _require("SUBSCRIPTION_BASE_URL").rstrip("/")
 PROMETHEUS_URL: str = os.environ.get("PROMETHEUS_URL", "http://168.100.11.130:9090").rstrip("/")
+MINECRAFT_RCON_HOST: str = os.environ.get("MINECRAFT_RCON_HOST", "168.100.11.130")
+MINECRAFT_RCON_PORT: int = int(os.environ.get("MINECRAFT_RCON_PORT", "25575"))
+MINECRAFT_RCON_PASSWORD: str = os.environ.get("MINECRAFT_RCON_PASSWORD", "")
 
 # Mirrors remnawave.enums.ClientType — update when Remnawave adds new types
 # "raw" is a special type: fetches default sub and base64-decodes to vless:// links

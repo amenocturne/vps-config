@@ -182,6 +182,18 @@ SCHEMA = [
         ],
     },
     {
+        "section": "Minecraft",
+        "keys": [
+            {
+                "name": "minecraft_rcon_password",
+                "description": "RCON password for Minecraft server management",
+                "used_by": ["home_server", "remnawave"],
+                "default": "",
+                "generate": "openssl rand -hex 16",
+            },
+        ],
+    },
+    {
         "section": "WebDAV",
         "keys": [
             {

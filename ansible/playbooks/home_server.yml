@@ -18,6 +18,7 @@
     - { role: navidrome, tags: ['navidrome'] }
     - { role: webdav, tags: ['webdav'] }
     - { role: send, tags: ['send'] }
+    - { role: minecraft, tags: ['minecraft'] }
     - role: monitoring-agent
       tags: ['monitoring']
       vars:

@@ -1,0 +1,47 @@
+services:
+  minecraft:
+    image: {{ minecraft_image }}
+    container_name: minecraft
+    restart: unless-stopped
+    ports:
+      - "{{ minecraft_port }}:25565"
+      - "{{ minecraft_rcon_port }}:25575"
+      - "{{ minecraft_monitor_port }}:{{ minecraft_monitor_port }}"
+    environment:
+      EULA: "TRUE"
+      TYPE: "{{ minecraft_type }}"
+      VERSION: "{{ minecraft_version }}"
+      MEMORY: "{{ minecraft_memory }}"
+      ONLINE_MODE: "{{ minecraft_online_mode }}"
+      MAX_PLAYERS: "{{ minecraft_max_players }}"
+      DIFFICULTY: "{{ minecraft_difficulty }}"
+      MODE: "{{ minecraft_gamemode }}"
+      PVP: "{{ minecraft_pvp }}"
+      VIEW_DISTANCE: "{{ minecraft_view_distance }}"
+      MOTD: "{{ minecraft_motd }}"
+      ENABLE_RCON: "true"
+      RCON_PASSWORD: "{{ minecraft_rcon_password }}"
+      RCON_PORT: "25575"
+      ENABLE_WHITELIST: "true"
+      ENFORCE_WHITELIST: "true"
+    volumes:
+      - {{ minecraft_dir }}/data:/data
+      - {{ minecraft_dir }}/plugins:/plugins
+    healthcheck:
+      test: mc-monitor status --host localhost --port 25565
+      start_period: 120s
+      interval: 30s
+      retries: 3
+
+  mc-monitor:
+    image: {{ minecraft_monitor_image }}
+    container_name: mc-monitor
+    restart: unless-stopped
+    network_mode: "service:minecraft"
+    depends_on:
+      minecraft:
+        condition: service_healthy
+    command: export-for-prometheus
+    environment:
+      EXPORT_SERVERS: "localhost:25565"
+      EXPORT_PORT: "{{ minecraft_monitor_port }}"

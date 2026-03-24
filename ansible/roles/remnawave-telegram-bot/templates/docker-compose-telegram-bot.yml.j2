@@ -13,6 +13,9 @@ services:
       - ADMIN_TELEGRAM_ID={{ admin_telegram_id }}
       - REMNAWAVE_API_TOKEN={{ remnawave_api_token }}
       - SUBSCRIPTION_BASE_URL={{ subscription_base_url }}
+      - MINECRAFT_RCON_HOST={{ minecraft_rcon_host | default("168.100.11.130") }}
+      - MINECRAFT_RCON_PORT={{ minecraft_rcon_port | default("25575") }}
+      - MINECRAFT_RCON_PASSWORD={{ minecraft_rcon_password }}
     networks:
       - remnawave-network
 

@@ -1,0 +1,63 @@
+---
+- name: Create minecraft directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ minecraft_dir }}"
+    - "{{ minecraft_dir }}/data"
+    - "{{ minecraft_dir }}/plugins"
+    - "{{ minecraft_dir }}/backups"
+
+- name: Deploy minecraft docker-compose
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ minecraft_dir }}/docker-compose.yml"
+    mode: '0644'
+  notify: restart minecraft
+
+- name: Deploy backup script
+  template:
+    src: backup.sh.j2
+    dest: "{{ minecraft_dir }}/backup.sh"
+    mode: '0755'
+
+- name: Schedule daily backup at 3 AM
+  cron:
+    name: "minecraft-backup"
+    minute: "0"
+    hour: "3"
+    job: "{{ minecraft_dir }}/backup.sh"
+
+- name: Deploy whitelist rejection monitor script
+  copy:
+    content: |
+      #!/bin/bash
+      PROM_FILE="/opt/node_exporter_textfile/minecraft_rejections.prom"
+      TEMP_FILE="${PROM_FILE}.$$"
+
+      echo "# HELP minecraft_rejected_logins_total Whitelist rejection attempts" > "$TEMP_FILE"
+      echo "# TYPE minecraft_rejected_logins_total counter" >> "$TEMP_FILE"
+
+      # Check last 60s of logs for whitelist rejections
+      REJECTIONS=$(docker logs --since 60s minecraft 2>&1 | grep -i "not white-listed\|You are not whitelisted" | grep -oP "name='?\K[^'}\]]+")
+
+      for player in $REJECTIONS; do
+        echo "minecraft_rejected_login{player=\"$player\"} 1" >> "$TEMP_FILE"
+      done
+
+      mv "$TEMP_FILE" "$PROM_FILE"
+    dest: /opt/minecraft-rejections.sh
+    mode: '0755'
+
+- name: Schedule rejection monitor every minute
+  cron:
+    name: "minecraft-rejection-monitor"
+    minute: "*"
+    job: "/opt/minecraft-rejections.sh"
+
+- name: Start minecraft
+  community.docker.docker_compose_v2:
+    project_src: "{{ minecraft_dir }}"
+    state: present

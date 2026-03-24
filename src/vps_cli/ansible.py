@@ -61,6 +61,7 @@ TARGET_COMPONENTS: dict[str, dict[str, str]] = {
         "navidrome": "navidrome",
         "webdav": "webdav",
         "send": "send",
+        "minecraft": "minecraft",
         "monitoring": "monitoring",
     },
     "remnawave": {

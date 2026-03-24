@@ -83,3 +83,11 @@ scrape_configs:
       - targets: ['localhost:9102']
         labels:
           server: 'home'
+
+  # === Minecraft (home server, tunneled via xray) ===
+  - job_name: 'minecraft'
+    scrape_timeout: 15s
+    static_configs:
+      - targets: ['localhost:9225']
+        labels:
+          server: 'home'

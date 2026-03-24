@@ -17,6 +17,7 @@
     - remnawave.py
     - config.py
     - monitoring.py
+    - minecraft.py
     - pyproject.toml
     - uv.lock
     - Dockerfile

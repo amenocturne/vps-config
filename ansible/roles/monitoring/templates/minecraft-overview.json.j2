@@ -1,0 +1,97 @@
+{
+  "id": null,
+  "uid": "minecraft-overview",
+  "title": "Minecraft Server",
+  "tags": ["minecraft", "home"],
+  "timezone": "browser",
+  "schemaVersion": 40,
+  "version": 4,
+  "refresh": "15s",
+  "time": { "from": "now-30m", "to": "now" },
+  "templating": { "list": [] },
+  "panels": [
+    {
+      "id": 1, "title": "Server Status", "type": "stat",
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
+      "targets": [{"expr": "max(minecraft_status_healthy)", "refId": "A"}],
+      "fieldConfig": {"defaults": {"mappings": [{"type": "value", "options": {"1": {"text": "Online", "color": "green"}, "0": {"text": "Offline", "color": "red"}}}], "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "graphMode": "none", "colorMode": "background", "textMode": "auto"},
+      "gridPos": {"h": 4, "w": 8, "x": 0, "y": 0}
+    },
+    {
+      "id": 2, "title": "Players Online", "type": "stat",
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
+      "targets": [{"expr": "max(minecraft_status_players_online_count)", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "none", "thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": null}, {"color": "green", "value": 1}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "graphMode": "area", "colorMode": "background", "textMode": "auto"},
+      "gridPos": {"h": 4, "w": 8, "x": 8, "y": 0}
+    },
+    {
+      "id": 3, "title": "Max Players", "type": "stat",
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
+      "targets": [{"expr": "max(minecraft_status_players_max_count)", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "none", "color": {"mode": "fixed", "fixedColor": "purple"}, "thresholds": {"mode": "absolute", "steps": [{"color": "purple", "value": null}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "graphMode": "none", "colorMode": "background", "textMode": "auto"},
+      "gridPos": {"h": 4, "w": 8, "x": 16, "y": 0}
+    },
+    {
+      "id": 4, "title": "Response Time", "type": "stat",
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
+      "targets": [{"expr": "max(minecraft_status_response_time_seconds) * 1000", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "ms", "decimals": 1, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 50}, {"color": "red", "value": 200}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "graphMode": "area", "colorMode": "background", "textMode": "auto"},
+      "gridPos": {"h": 4, "w": 8, "x": 0, "y": 4}
+    },
+    {
+      "id": 5, "title": "Home Server CPU", "type": "stat",
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
+      "targets": [{"expr": "100 - (avg(irate(node_cpu_seconds_total{mode=\"idle\",server=\"home\"}[5m])) * 100)", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "percent", "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 70}, {"color": "red", "value": 90}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "graphMode": "area", "colorMode": "background", "textMode": "auto"},
+      "gridPos": {"h": 4, "w": 8, "x": 8, "y": 4}
+    },
+    {
+      "id": 6, "title": "Home Server RAM", "type": "stat",
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
+      "targets": [{"expr": "(1 - node_memory_MemAvailable_bytes{server=\"home\"} / node_memory_MemTotal_bytes{server=\"home\"}) * 100", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "percent", "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 70}, {"color": "red", "value": 90}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "graphMode": "area", "colorMode": "background", "textMode": "auto"},
+      "gridPos": {"h": 4, "w": 8, "x": 16, "y": 4}
+    },
+    {
+      "id": 7, "title": "Players Online Over Time", "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
+      "targets": [{"expr": "max(minecraft_status_players_online_count)", "legendFormat": "Players", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "none", "min": 0, "color": {"mode": "fixed", "fixedColor": "green"}}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+    },
+    {
+      "id": 8, "title": "Response Time", "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
+      "targets": [{"expr": "max(minecraft_status_response_time_seconds) * 1000", "legendFormat": "Ping", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "ms", "min": 0, "color": {"mode": "fixed", "fixedColor": "yellow"}}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+    },
+    {
+      "id": 9, "title": "Home Server CPU Over Time", "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
+      "targets": [{"expr": "100 - (avg(irate(node_cpu_seconds_total{mode=\"idle\",server=\"home\"}[5m])) * 100)", "legendFormat": "CPU", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100, "color": {"mode": "fixed", "fixedColor": "orange"}}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
+    },
+    {
+      "id": 10, "title": "Home Server Memory Over Time", "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
+      "targets": [{"expr": "(1 - node_memory_MemAvailable_bytes{server=\"home\"} / node_memory_MemTotal_bytes{server=\"home\"}) * 100", "legendFormat": "RAM", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100, "color": {"mode": "fixed", "fixedColor": "blue"}}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}
+    },
+    {
+      "id": 11, "title": "Server Uptime", "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
+      "targets": [{"expr": "max(minecraft_status_healthy)", "legendFormat": "Healthy", "refId": "A"}],
+      "fieldConfig": {"defaults": {"min": 0, "max": 1, "color": {"mode": "fixed", "fixedColor": "green"}}, "overrides": []},
+      "gridPos": {"h": 5, "w": 24, "x": 0, "y": 24}
+    }
+  ]
+}

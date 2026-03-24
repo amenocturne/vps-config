@@ -20,6 +20,7 @@ from telegram.ext import (
 from config import BOT_TOKEN, ADMIN_TELEGRAM_ID, CLIENT_TYPES, SUBSCRIPTION_BASE_URL
 import remnawave
 import monitoring
+import minecraft
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +29,7 @@ def _reply_keyboard(tg_id: int) -> ReplyKeyboardMarkup:
     if tg_id == ADMIN_TELEGRAM_ID:
         rows.append(["👥 Пользователи", "🏓 Пинг"])
         rows.append(["📊 Статус серверов", "🔔 Проверить алерты"])
+        rows.append(["⛏ Minecraft"])
     return ReplyKeyboardMarkup(rows, resize_keyboard=True)
 
 
@@ -255,8 +257,181 @@ async def _periodic_alert_job(context: ContextTypes.DEFAULT_TYPE) -> None:
         )
 
 
+async def _mc_rejection_alert_job(context: ContextTypes.DEFAULT_TYPE) -> None:
+    rejected = await minecraft.check_rejected_logins()
+    rejected_set = frozenset(rejected)
+    prev = context.bot_data.get("_last_mc_rejections", frozenset())
+    new_rejections = rejected_set - prev
+    context.bot_data["_last_mc_rejections"] = rejected_set
+    if new_rejections:
+        players = ", ".join(sorted(new_rejections))
+        await context.bot.send_message(
+            chat_id=ADMIN_TELEGRAM_ID,
+            text=f"\u26a0\ufe0f Minecraft: unauthorized login attempt\n\nRejected players: {players}",
+        )
+
+
+def _mc_menu_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("📋 Whitelist", callback_data="mc:whitelist"),
+         InlineKeyboardButton("👥 Online", callback_data="mc:online")],
+        [InlineKeyboardButton("➕ Add Player", callback_data="mc:add_prompt"),
+         InlineKeyboardButton("➖ Remove Player", callback_data="mc:remove_prompt")],
+        [InlineKeyboardButton("📊 Status", callback_data="mc:status")],
+    ])
+
+
+async def _minecraft_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    tg_id = update.effective_user.id
+    if not _is_admin(tg_id):
+        return
+
+    online = await minecraft.is_online()
+    status = "🟢 Online" if online else "🔴 Offline"
+    await update.message.reply_text(
+        f"⛏ Minecraft Server ({status})",
+        reply_markup=_mc_menu_keyboard(),
+    )
+
+
+async def _mc_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    if query.from_user.id != ADMIN_TELEGRAM_ID:
+        await query.answer()
+        return
+
+    action = query.data.removeprefix("mc:")
+
+    if action == "whitelist":
+        await query.answer()
+        try:
+            players = await minecraft.whitelist_list()
+            if players:
+                text = "📋 Whitelisted players:\n" + "\n".join(f"  • {p}" for p in sorted(players))
+            else:
+                text = "📋 Whitelist is empty"
+        except ConnectionError:
+            text = "❌ Cannot reach Minecraft server"
+        await query.message.reply_text(text, reply_markup=_mc_menu_keyboard())
+
+    elif action == "online":
+        await query.answer()
+        try:
+            count, players = await minecraft.list_online()
+            if players:
+                text = f"👥 Online ({count}):\n" + "\n".join(f"  • {p}" for p in players)
+            else:
+                text = "👥 No players online"
+        except ConnectionError:
+            text = "❌ Cannot reach Minecraft server"
+        await query.message.reply_text(text, reply_markup=_mc_menu_keyboard())
+
+    elif action == "status":
+        await query.answer()
+        try:
+            s = await minecraft.server_status()
+            tps_1m, tps_5m, tps_15m = s["tps"]
+            mspt_5s, mspt_10s, mspt_60s = s["mspt"]
+            players = ", ".join(s["players"]) if s["players"] else "—"
+
+            text = (
+                f"📊 <b>Server Status</b>\n\n"
+                f"<pre>"
+                f"Players   {s['players_online']}\n"
+                f"Online    {players}\n"
+                f"─────────────────────\n"
+                f"TPS       1m     5m    15m\n"
+                f"          {tps_1m:<6.1f} {tps_5m:<5.1f} {tps_15m:.1f}\n"
+                f"─────────────────────\n"
+                f"MSPT      5s     10s   60s\n"
+                f"          {mspt_5s:<6.1f} {mspt_10s:<5.1f} {mspt_60s:.1f}"
+                f"</pre>"
+            )
+        except ConnectionError:
+            text = "❌ Cannot reach Minecraft server"
+        await query.message.reply_text(text, parse_mode="HTML", reply_markup=_mc_menu_keyboard())
+
+    elif action == "add_prompt":
+        await query.answer()
+        context.user_data["mc_action"] = "add"
+        await query.message.reply_text(
+            "Enter the player name to add to whitelist:",
+        )
+
+    elif action == "remove_prompt":
+        await query.answer()
+        try:
+            players = await minecraft.whitelist_list()
+        except ConnectionError:
+            await query.message.reply_text("❌ Cannot reach Minecraft server")
+            return
+        if not players:
+            await query.message.reply_text("Whitelist is empty", reply_markup=_mc_menu_keyboard())
+            return
+        keyboard = [
+            [InlineKeyboardButton(f"❌ {p}", callback_data=f"mc:remove:{p}")]
+            for p in sorted(players)
+        ]
+        keyboard.append([InlineKeyboardButton("⬅️ Back", callback_data="mc:back")])
+        await query.message.reply_text(
+            "Select player to remove:",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+
+    elif action.startswith("remove:"):
+        player = action.removeprefix("remove:")
+        await query.answer()
+        try:
+            result = await minecraft.whitelist_remove(player)
+            text = f"✅ {result}" if result else f"✅ Removed {player}"
+        except ConnectionError:
+            text = "❌ Cannot reach Minecraft server"
+        await query.message.reply_text(text, reply_markup=_mc_menu_keyboard())
+
+    elif action == "back":
+        await query.answer()
+        online = await minecraft.is_online()
+        status = "🟢 Online" if online else "🔴 Offline"
+        await query.message.reply_text(
+            f"⛏ Minecraft Server ({status})",
+            reply_markup=_mc_menu_keyboard(),
+        )
+
+
+async def _mc_player_name_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle text input when waiting for a player name to add to whitelist."""
+    tg_id = update.effective_user.id
+    if not _is_admin(tg_id):
+        return
+
+    mc_action = context.user_data.pop("mc_action", None)
+    if mc_action != "add":
+        return  # Not waiting for MC input, let fallback handle it
+
+    player = update.message.text.strip()
+    if not player or " " in player or len(player) > 16:
+        await update.message.reply_text(
+            "Invalid player name. Must be 1-16 characters with no spaces.",
+            reply_markup=_mc_menu_keyboard(),
+        )
+        return
+
+    try:
+        result = await minecraft.whitelist_add(player)
+        text = f"✅ {result}" if result else f"✅ Added {player}"
+    except ConnectionError:
+        text = "❌ Cannot reach Minecraft server"
+    await update.message.reply_text(text, reply_markup=_mc_menu_keyboard())
+
+
 async def _fallback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     tg_id = update.effective_user.id
+
+    # Check if we're waiting for MC player name input
+    if context.user_data.get("mc_action") and _is_admin(tg_id):
+        await _mc_player_name_handler(update, context)
+        return
+
     if not await _is_authorized(tg_id):
         await update.message.reply_text(
             f"Твой Telegram ID: <code>{tg_id}</code>\n\n"
@@ -279,9 +454,11 @@ def main() -> None:
     app.add_handler(MessageHandler(filters.Text(["🏓 Пинг"]), _ping))
     app.add_handler(MessageHandler(filters.Text(["📊 Статус серверов"]), _server_status))
     app.add_handler(MessageHandler(filters.Text(["🔔 Проверить алерты"]), _check_alerts))
+    app.add_handler(MessageHandler(filters.Text(["⛏ Minecraft"]), _minecraft_menu))
     app.add_handler(CallbackQueryHandler(_pick_user_callback, pattern=r"^pick_user:"))
     app.add_handler(CallbackQueryHandler(_config_callback, pattern=r"^config:"))
     app.add_handler(CallbackQueryHandler(_user_detail_callback, pattern=r"^user:"))
+    app.add_handler(CallbackQueryHandler(_mc_callback, pattern=r"^mc:"))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, _fallback))
 
     # Daily digest at 09:00 Moscow time (UTC+3 = 06:00 UTC)
@@ -298,6 +475,14 @@ def main() -> None:
         interval=300,
         first=10,
         name="periodic_alerts",
+    )
+
+    # Minecraft whitelist rejection check every minute
+    app.job_queue.run_repeating(
+        _mc_rejection_alert_job,
+        interval=60,
+        first=30,
+        name="mc_rejection_alerts",
     )
 
     app.run_polling()
