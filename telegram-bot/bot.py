@@ -208,7 +208,7 @@ async def _ping(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     ok = await remnawave.ping()
     status = "✅ API доступен" if ok else "❌ API недоступен"
-    await update.message.reply_text(status)
+    await update.message.reply_text(status, reply_markup=_reply_keyboard(tg_id))
 
 
 async def _server_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
