@@ -57,6 +57,15 @@ services:
         icon: "fas fa-paper-plane"
         tag: "home server"
 
+  - name: "Communication"
+    icon: "fas fa-comments"
+    items:
+      - name: "Briefing"
+        subtitle: "P2P video calls"
+        url: "https://call.{{ domain_name }}"
+        icon: "fas fa-video"
+        tag: "vps"
+
   - name: "Productivity"
     icon: "fas fa-tasks"
     items:
@@ -71,6 +80,29 @@ services:
         icon: "fas fa-calendar"
         tag: "home server"
 
+  - name: "Projects"
+    icon: "fas fa-rocket"
+    items:
+      - name: "Infinite Echoes"
+        subtitle: "Audio creation game"
+        url: "https://projects.{{ domain_name }}/infinite-echoes/"
+        icon: "fas fa-headphones"
+        tag: "vps"
+      - name: "Rouletto"
+        subtitle: "Casino wheel app"
+        url: "https://projects.{{ domain_name }}/rouletto/"
+        icon: "fas fa-dice"
+        tag: "vps"
+
+  - name: "Sites"
+    icon: "fas fa-globe"
+    items:
+      - name: "Personal Website"
+        subtitle: "Portfolio"
+        url: "https://{{ domain_name }}"
+        icon: "fas fa-user"
+        tag: "vps"
+
   - name: "Infrastructure"
     icon: "fas fa-server"
     items:
@@ -83,6 +115,11 @@ services:
         subtitle: "Metrics"
         url: "https://prometheus.{{ domain_name }}"
         icon: "fas fa-database"
+        tag: "vps"
+      - name: "Loki"
+        subtitle: "Log aggregation"
+        url: "https://loki.{{ domain_name }}"
+        icon: "fas fa-scroll"
         tag: "vps"
       - name: "Remnawave"
         subtitle: "VPN panel"
