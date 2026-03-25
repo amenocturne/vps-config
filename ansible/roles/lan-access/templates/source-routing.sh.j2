@@ -1,0 +1,27 @@
+#!/bin/bash
+# Source-based routing: ensure responses from WiFi IP go back via WiFi.
+# Needed because the server has both WiFi and Ethernet on the same subnet —
+# without this, the kernel routes all responses via the lower-metric Ethernet
+# interface, even for traffic that arrived on WiFi.
+set -euo pipefail
+
+LAN_IP="{{ lan_local_ip }}"
+GATEWAY="{{ lan_gateway }}"
+TABLE="wifi_src"
+
+# Find the wireless interface with this IP
+IFACE=$(ip -4 addr show | grep -B2 "$LAN_IP" | grep -oP 'wl\w+' | head -1)
+
+if [ -z "$IFACE" ]; then
+    echo "No wireless interface found with IP $LAN_IP" >&2
+    exit 1
+fi
+
+echo "Source routing: $LAN_IP via $IFACE (table $TABLE)"
+
+# Traffic FROM this IP uses our custom routing table
+ip rule add from "$LAN_IP" table "$TABLE" 2>/dev/null || true
+
+# In our table: route LAN and default traffic via WiFi
+ip route replace {{ lan_subnet }} dev "$IFACE" src "$LAN_IP" table "$TABLE"
+ip route replace default via "$GATEWAY" dev "$IFACE" table "$TABLE"

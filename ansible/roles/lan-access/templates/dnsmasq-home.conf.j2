@@ -6,7 +6,7 @@ address=/{{ home_domain }}/{{ lan_local_ip }}
 server=1.1.1.1
 server=8.8.8.8
 
-# Only listen on LAN interface (avoids conflict with systemd-resolved on 127.0.0.53)
+# Only listen on LAN IP (avoids conflict with systemd-resolved on 127.0.0.53)
 listen-address={{ lan_local_ip }}
 bind-interfaces
 

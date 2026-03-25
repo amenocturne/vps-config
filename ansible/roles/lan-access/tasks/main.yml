@@ -30,6 +30,12 @@
     name: dnsmasq
     state: present
 
+- name: Remove ubuntu-fan dnsmasq config (conflicts with our config)
+  file:
+    path: /etc/dnsmasq.d/ubuntu-fan
+    state: absent
+  notify: restart dnsmasq
+
 - name: Configure dnsmasq for split DNS
   template:
     src: dnsmasq-home.conf.j2
@@ -37,11 +43,74 @@
     mode: '0644'
   notify: restart dnsmasq
 
+- name: Remove dnsmasq systemd override if present
+  file:
+    path: /etc/systemd/system/dnsmasq.service.d
+    state: absent
+  notify:
+    - daemon-reload
+    - restart dnsmasq
+
+- name: Flush handlers before starting dnsmasq
+  meta: flush_handlers
+
 - name: Enable and start dnsmasq
   systemd:
     name: dnsmasq
     state: started
     enabled: yes
+    daemon_reload: yes
+
+# Source-based policy routing — ensures DNS (and all) responses from the WiFi IP
+# go back via the WiFi interface, even when an Ethernet NIC has a lower metric.
+# Without this, the kernel routes responses via Ethernet and clients never see them.
+
+- name: Add routing table for WiFi source routing
+  lineinfile:
+    path: /etc/iproute2/rt_tables
+    regexp: '^100\s'
+    line: "100 wifi_src"
+
+- name: Create lan-access directory
+  file:
+    path: /opt/lan-access
+    state: directory
+    mode: '0755'
+
+- name: Deploy source routing script
+  template:
+    src: source-routing.sh.j2
+    dest: /opt/lan-access/source-routing.sh
+    mode: '0755'
+
+- name: Deploy source routing systemd service
+  copy:
+    content: |
+      [Unit]
+      Description=Source-based routing for WiFi interface
+      After=network-online.target
+      Wants=network-online.target
+
+      [Service]
+      Type=oneshot
+      ExecStart=/opt/lan-access/source-routing.sh
+      RemainAfterExit=yes
+
+      [Install]
+      WantedBy=multi-user.target
+    dest: /etc/systemd/system/lan-source-routing.service
+    mode: '0644'
+  notify: daemon-reload
+
+- name: Flush handlers
+  meta: flush_handlers
+
+- name: Enable and start source routing
+  systemd:
+    name: lan-source-routing
+    state: restarted
+    enabled: yes
+    daemon_reload: yes
 
 # Firewall
 

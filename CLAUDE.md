@@ -48,9 +48,9 @@ vps deploy nodes                 # deploy all VPN nodes
 vps deploy node-2                # deploy specific node
 vps deploy <target> <comp> --dry-run  # check mode
 
-vps local setup                  # configure macOS for LAN access (split DNS + CA trust)
-vps local status                 # check LAN access configuration
-vps local remove                 # remove LAN access configuration
+vps local setup                  # install LAN toggle daemon + trust CA (macOS)
+vps local status                 # check daemon, hosts entries, reachability
+vps local remove                 # uninstall daemon and clean up
 
 vps doctor                       # all checks (--secrets, --syntax, --connectivity, --services)
 vps server logs <service>        # docker logs (--on remnawave for other targets)

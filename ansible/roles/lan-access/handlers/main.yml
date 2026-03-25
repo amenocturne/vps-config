@@ -4,6 +4,10 @@
     name: avahi-daemon
     state: restarted
 
+- name: daemon-reload
+  systemd:
+    daemon_reload: yes
+
 - name: restart dnsmasq
   systemd:
     name: dnsmasq

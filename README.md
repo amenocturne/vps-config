@@ -98,18 +98,20 @@ vps remnawave add-node --ip 1.2.3.4 --name "Germany" --country DE --domain de1.r
 
 By default, all home server services (WebDAV, Jellyfin, Navidrome, etc.) are accessed through the VPS tunnel — traffic goes Mac → VPS → XRay tunnel → home server, even when you're sitting on the same network. This is slow for large file transfers.
 
-The **LAN access** feature enables split DNS so the same URLs (`files.home.amenocturne.space`, etc.) resolve to the home server's local IP when you're at home, giving you direct gigabit LAN speed. When you leave home, DNS automatically falls back to the VPS tunnel.
+The **LAN access** feature makes the same URLs (`files.home.amenocturne.space`, etc.) resolve to the home server's local IP when you're at home, giving you direct gigabit LAN speed. When you leave, it switches back to the VPS tunnel automatically.
 
 ### How it works
 
+A launchd daemon on the Mac watches for network changes. When it detects the home server is reachable on the LAN, it adds `/etc/hosts` entries pointing home domains to the local IP. When the server is unreachable (you left home), it removes them and DNS falls back to the VPS tunnel.
+
 ```
 At home:
-  DNS query → home server dnsmasq → 192.168.0.104 (local)
+  /etc/hosts → 192.168.0.104 (local)
   HTTPS → home Caddy (port 443, internal CA) → service
   Speed: LAN
 
 Away:
-  DNS query → home server → timeout (2s) → fallback to 1.1.1.1
+  /etc/hosts entries removed by daemon
   DNS resolves to VPS → HTTPS → XRay tunnel → home server → service
   Speed: internet
 ```
@@ -118,7 +120,8 @@ Away:
 
 The `lan-access` Ansible role installs:
 - **avahi-daemon** — advertises `home-server.local` via mDNS
-- **dnsmasq** — resolves `*.home.amenocturne.space` to the local IP for LAN clients
+- **dnsmasq** — split DNS for non-macOS clients on the LAN
+- **Source routing** — ensures responses go back via the correct NIC (the server has both WiFi and Ethernet)
 - **UFW rules** — opens DNS (53) and service ports from the LAN subnet
 
 The `xray-bridge` Caddyfile serves HTTPS on port 443 with Caddy's internal CA (`tls internal`) for all home domains.
@@ -137,25 +140,25 @@ Each macOS client needs a one-time local configuration:
 vps local setup
 ```
 
-This does two things:
+This does three things (requires `sudo`):
 
-1. **Creates `/etc/resolver/home.amenocturne.space`** — tells macOS to query the home server for DNS first (with 2s timeout), falling back to `1.1.1.1` when not on the home network
-2. **Trusts Caddy's internal CA** — adds the home server's Caddy root certificate to the macOS Keychain so HTTPS works without warnings
-
-Both steps require `sudo` (you'll be prompted).
+1. **Installs a toggle script** at `/usr/local/bin/vps-lan-toggle` — adds/removes `/etc/hosts` entries based on home server reachability
+2. **Installs a launchd daemon** (`com.vps.lan-access`) — triggers the script on network changes and at boot
+3. **Trusts Caddy's internal CA** — adds the home server's Caddy root certificate to the macOS Keychain so HTTPS works without browser warnings
 
 ### Managing local access
 
 ```bash
-vps local status    # check if resolver + CA are configured, test DNS resolution
-vps local remove    # remove the resolver file
+vps local status    # check daemon, /etc/hosts entries, reachability
+vps local remove    # uninstall daemon, script, and hosts entries
 ```
 
 ### Troubleshooting
 
-- **DNS not resolving locally**: flush cache with `sudo dscacheutil -flushcache` and try again
-- **Certificate warnings**: re-run `vps local setup` — the CA may have been regenerated after a redeploy
-- **Slow first connection when away**: expected — 2s DNS timeout while macOS tries the home server before falling back. Subsequent connections use cached DNS
+- **DNS not updating after network change**: `sudo dscacheutil -flushcache && sudo killall -HUP mDNSResponder`
+- **Certificate warnings in browser**: re-run `vps local setup` — the CA may have been regenerated after a redeploy
+- **Daemon not running**: `sudo launchctl bootstrap system /Library/LaunchDaemons/com.vps.lan-access.plist`
+- **Check daemon logs**: `log show --predicate 'senderImagePath CONTAINS "vps-lan"' --last 1h`
 
 ## Project Structure
 

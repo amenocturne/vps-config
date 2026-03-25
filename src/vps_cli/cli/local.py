@@ -5,18 +5,21 @@ import platform
 import subprocess
 import tempfile
 from pathlib import Path
+from textwrap import dedent
 
 from vps_cli import find_project_root
 from vps_cli.errors import VpsError
 from vps_cli.util import bold, green, red, yellow, confirm
 
-RESOLVER_DIR = Path("/etc/resolver")
-FALLBACK_DNS = "1.1.1.1"
-DNS_TIMEOUT = 2
+HOSTS_FILE = Path("/etc/hosts")
+HOSTS_MARKER = "# vps-lan-access"
+TOGGLE_SCRIPT = Path("/usr/local/bin/vps-lan-toggle")
+LAUNCHD_PLIST = Path("/Library/LaunchDaemons/com.vps.lan-access.plist")
+LAUNCHD_LABEL = "com.vps.lan-access"
 
 
-def _load_home_config() -> tuple[str, str]:
-    """Load home server IP and domain from inventory."""
+def _load_home_config() -> tuple[str, str, list[dict]]:
+    """Load home server IP, domain, and apps from inventory."""
     import yaml
 
     root = find_project_root()
@@ -26,24 +29,35 @@ def _load_home_config() -> tuple[str, str]:
 
     home_ip = inv["all"]["children"]["home_server"]["hosts"]["home_server"]["ansible_host"]
     home_domain = inv["all"]["vars"]["home_domain"]
-    return home_ip, home_domain
+    home_apps = inv["all"]["children"]["home_server"]["vars"]["home_apps"]
+    return home_ip, home_domain, home_apps
+
+
+def _hosts_entries(home_ip: str, home_domain: str, home_apps: list[dict]) -> list[str]:
+    """Generate /etc/hosts lines for all home apps."""
+    return [
+        f"{home_ip} {app['subdomain']}.{home_domain}  {HOSTS_MARKER}"
+        for app in home_apps
+    ]
 
 
 def cmd_local_setup(_args: argparse.Namespace) -> int:
     if platform.system() != "Darwin":
         raise VpsError("Local setup is only supported on macOS")
 
-    home_ip, home_domain = _load_home_config()
-    resolver_file = RESOLVER_DIR / home_domain
+    home_ip, home_domain, home_apps = _load_home_config()
+    entries = _hosts_entries(home_ip, home_domain, home_apps)
 
     print(bold("Setting up LAN access to home server\n"))
 
-    _setup_resolver(home_ip, home_domain, resolver_file)
+    _install_toggle_script(home_ip, entries)
+    _install_launchd(home_ip)
     _trust_caddy_ca(home_ip)
     _verify_setup(home_ip, home_domain)
 
-    print(f"\n{green('Done!')} Home services now use LAN when at home.")
+    print(f"\n{green('Done!')} Home services route via LAN when at home.")
     print(f"  WebDAV in Finder: {bold(f'https://files.{home_domain}')}")
+    print("  The daemon auto-toggles /etc/hosts on network changes.")
     return 0
 
 
@@ -51,30 +65,46 @@ def cmd_local_status(_args: argparse.Namespace) -> int:
     if platform.system() != "Darwin":
         raise VpsError("Local status is only supported on macOS")
 
-    home_ip, home_domain = _load_home_config()
-    resolver_file = RESOLVER_DIR / home_domain
+    home_ip, home_domain, _ = _load_home_config()
 
     print(bold("LAN access status\n"))
 
-    if resolver_file.exists():
-        print(f"  {green('✓')} Resolver: {resolver_file}")
+    # Daemon
+    result = subprocess.run(
+        ["launchctl", "list", LAUNCHD_LABEL],
+        capture_output=True,
+    )
+    if result.returncode == 0:
+        print(f"  {green('✓')} Daemon: running")
     else:
-        print(f"  {red('✗')} Resolver: not configured")
+        print(f"  {red('✗')} Daemon: not loaded")
 
+    # Toggle script
+    if TOGGLE_SCRIPT.exists():
+        print(f"  {green('✓')} Toggle script: {TOGGLE_SCRIPT}")
+    else:
+        print(f"  {red('✗')} Toggle script: not installed")
+
+    # Hosts entries
+    if HOSTS_FILE.exists() and HOSTS_MARKER in HOSTS_FILE.read_text():
+        print(f"  {green('✓')} /etc/hosts: LAN entries active (at home)")
+    else:
+        print(f"  {yellow('−')} /etc/hosts: LAN entries not active (away or not set up)")
+
+    # Reachability
     reachable = _is_reachable(home_ip)
     if reachable:
-        print(f"  {green('✓')} Home server: reachable on LAN ({home_ip})")
+        print(f"  {green('✓')} Home server: reachable ({home_ip})")
     else:
-        print(f"  {yellow('−')} Home server: not reachable (not on home network?)")
+        print(f"  {yellow('−')} Home server: not reachable")
 
-    resolved_ip = _resolve_domain(f"files.{home_domain}", home_ip)
-    if resolved_ip:
-        if resolved_ip == home_ip:
-            print(f"  {green('✓')} DNS: files.{home_domain} → {resolved_ip} (local)")
-        else:
-            print(f"  {yellow('−')} DNS: files.{home_domain} → {resolved_ip} (remote)")
-    else:
-        print(f"  {red('✗')} DNS: resolution failed")
+    # DNS resolution
+    resolved = _resolve_domain(f"files.{home_domain}")
+    if resolved:
+        local = resolved == home_ip
+        label = "local" if local else "remote"
+        icon = green("✓") if local else yellow("−")
+        print(f"  {icon} DNS: files.{home_domain} → {resolved} ({label})")
 
     return 0
 
@@ -83,48 +113,144 @@ def cmd_local_remove(_args: argparse.Namespace) -> int:
     if platform.system() != "Darwin":
         raise VpsError("Local setup is only supported on macOS")
 
-    _, home_domain = _load_home_config()
-    resolver_file = RESOLVER_DIR / home_domain
-
-    if not resolver_file.exists():
-        print("LAN access is not configured.")
-        return 0
-
     if not confirm("Remove LAN access configuration?"):
         return 0
 
-    subprocess.run(["sudo", "rm", str(resolver_file)], check=True)
-    print(f"{green('✓')} Removed {resolver_file}")
+    # Unload daemon
+    subprocess.run(
+        ["sudo", "launchctl", "bootout", f"system/{LAUNCHD_LABEL}"],
+        capture_output=True,
+    )
+
+    # Remove files
+    for path in [LAUNCHD_PLIST, TOGGLE_SCRIPT]:
+        subprocess.run(["sudo", "rm", "-f", str(path)], capture_output=True)
+
+    # Remove hosts entries
+    _remove_hosts_entries()
+
+    print(f"{green('✓')} LAN access removed")
     return 0
 
 
-def _setup_resolver(home_ip: str, home_domain: str, resolver_file: Path) -> None:
-    content = f"nameserver {home_ip}\nnameserver {FALLBACK_DNS}\ntimeout {DNS_TIMEOUT}\n"
+def _install_toggle_script(home_ip: str, entries: list[str]) -> None:
+    hosts_block = "\n".join(entries)
+    script = dedent(f"""\
+        #!/bin/bash
+        # Auto-generated by vps local setup — toggles /etc/hosts for LAN access.
+        # Runs on network changes via launchd.
+        set -euo pipefail
 
-    if resolver_file.exists():
-        existing = resolver_file.read_text()
-        if existing == content:
-            print(f"  {green('✓')} Resolver already configured")
-            return
-        print(f"  Updating {resolver_file}")
-    else:
-        print(f"  Creating {resolver_file}")
+        HOME_IP="{home_ip}"
+        MARKER="{HOSTS_MARKER}"
+        HOSTS="{HOSTS_FILE}"
 
-    subprocess.run(["sudo", "mkdir", "-p", str(RESOLVER_DIR)], check=True)
+        add_entries() {{
+            # Remove stale entries first
+            sed -i '' "/$MARKER/d" "$HOSTS"
+            cat >> "$HOSTS" << 'ENTRIES'
+        {hosts_block}
+        ENTRIES
+            dscacheutil -flushcache
+            killall -HUP mDNSResponder 2>/dev/null || true
+            logger -t vps-lan "LAN access: ON (home server reachable)"
+        }}
+
+        remove_entries() {{
+            if grep -q "$MARKER" "$HOSTS"; then
+                sed -i '' "/$MARKER/d" "$HOSTS"
+                dscacheutil -flushcache
+                killall -HUP mDNSResponder 2>/dev/null || true
+                logger -t vps-lan "LAN access: OFF (home server not reachable)"
+            fi
+        }}
+
+        # Wait briefly for network to settle after a change
+        sleep 2
+
+        if ping -c 1 -W 1 "$HOME_IP" > /dev/null 2>&1; then
+            add_entries
+        else
+            remove_entries
+        fi
+    """)
+
+    print("  Installing toggle script...")
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".sh", delete=False) as f:
+        f.write(script)
+        tmp = f.name
+
+    subprocess.run(["sudo", "cp", tmp, str(TOGGLE_SCRIPT)], check=True)
+    subprocess.run(["sudo", "chmod", "755", str(TOGGLE_SCRIPT)], check=True)
+    Path(tmp).unlink(missing_ok=True)
+    print(f"  {green('✓')} Toggle script installed at {TOGGLE_SCRIPT}")
+
+
+def _install_launchd(home_ip: str) -> None:
+    plist = dedent(f"""\
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+          "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>Label</key>
+            <string>{LAUNCHD_LABEL}</string>
+            <key>ProgramArguments</key>
+            <array>
+                <string>{TOGGLE_SCRIPT}</string>
+            </array>
+            <key>WatchPaths</key>
+            <array>
+                <string>/Library/Preferences/SystemConfiguration</string>
+            </array>
+            <key>RunAtLoad</key>
+            <true/>
+        </dict>
+        </plist>
+    """)
+
+    print("  Installing launchd daemon...")
+
+    # Unload if already running
     subprocess.run(
-        ["sudo", "tee", str(resolver_file)],
-        input=content.encode(),
-        stdout=subprocess.DEVNULL,
+        ["sudo", "launchctl", "bootout", f"system/{LAUNCHD_LABEL}"],
+        capture_output=True,
+    )
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".plist", delete=False) as f:
+        f.write(plist)
+        tmp = f.name
+
+    subprocess.run(["sudo", "cp", tmp, str(LAUNCHD_PLIST)], check=True)
+    subprocess.run(["sudo", "chmod", "644", str(LAUNCHD_PLIST)], check=True)
+    Path(tmp).unlink(missing_ok=True)
+
+    subprocess.run(
+        ["sudo", "launchctl", "bootstrap", "system", str(LAUNCHD_PLIST)],
         check=True,
     )
-    print(f"  {green('✓')} Resolver configured (primary: {home_ip}, fallback: {FALLBACK_DNS})")
+    print(f"  {green('✓')} Daemon installed and running")
+
+
+def _remove_hosts_entries() -> None:
+    if not HOSTS_FILE.exists():
+        return
+    content = HOSTS_FILE.read_text()
+    if HOSTS_MARKER not in content:
+        return
+    subprocess.run(
+        ["sudo", "sed", "-i", "", f"/{HOSTS_MARKER}/d", str(HOSTS_FILE)],
+        check=True,
+    )
+    subprocess.run(["dscacheutil", "-flushcache"], capture_output=True)
+    subprocess.run(["killall", "-HUP", "mDNSResponder"], capture_output=True)
 
 
 def _trust_caddy_ca(home_ip: str) -> None:
     print("  Fetching Caddy internal CA from home server...")
 
     if not _is_reachable(home_ip):
-        print(f"  {yellow('⚠')} Home server not reachable — skipping CA trust")
+        print(f"  {yellow('!')} Home server not reachable — skipping CA trust")
         print(f"    Run again on home network: {bold('vps local setup')}")
         return
 
@@ -139,14 +265,14 @@ def _trust_caddy_ca(home_ip: str) -> None:
     )
 
     if result.returncode != 0:
-        print(f"  {yellow('⚠')} Could not fetch CA cert — deploy home server first")
+        print(f"  {yellow('!')} Could not fetch CA cert — deploy home server first")
         if result.stderr.strip():
             print(f"    {result.stderr.strip()}")
         return
 
     ca_cert = result.stdout
     if "BEGIN CERTIFICATE" not in ca_cert:
-        print(f"  {yellow('⚠')} Invalid CA cert — deploy the tunnel role first")
+        print(f"  {yellow('!')} Invalid CA cert — deploy the tunnel role first")
         return
 
     with tempfile.NamedTemporaryFile(suffix=".crt", delete=False, mode="w") as f:
@@ -155,7 +281,7 @@ def _trust_caddy_ca(home_ip: str) -> None:
 
     try:
         if not confirm("  Trust Caddy's internal CA in macOS Keychain?"):
-            print(f"  {yellow('−')} Skipped CA trust")
+            print(f"  {yellow('-')} Skipped CA trust")
             return
 
         subprocess.run(
@@ -181,17 +307,23 @@ def _verify_setup(home_ip: str, home_domain: str) -> None:
     print("\n  Verifying...")
 
     if not _is_reachable(home_ip):
-        print(f"  {yellow('−')} Not on home network — can't verify DNS")
+        print(f"  {yellow('-')} Not on home network — can't verify")
         return
 
-    resolved = _resolve_domain(f"files.{home_domain}", home_ip)
+    # Check if toggle script ran and added entries
+    if HOSTS_FILE.exists() and HOSTS_MARKER in HOSTS_FILE.read_text():
+        print(f"  {green('✓')} /etc/hosts entries active")
+    else:
+        print(f"  {yellow('-')} /etc/hosts entries not yet active (daemon may need a moment)")
+
+    resolved = _resolve_domain(f"files.{home_domain}")
     if resolved == home_ip:
         print(f"  {green('✓')} files.{home_domain} → {home_ip}")
     elif resolved:
-        print(f"  {yellow('−')} files.{home_domain} → {resolved} (expected {home_ip})")
-        print(f"    Try flushing DNS: {bold('sudo dscacheutil -flushcache')}")
+        print(f"  {yellow('-')} files.{home_domain} → {resolved}")
+        print(f"    Flush DNS: {bold('sudo dscacheutil -flushcache')}")
     else:
-        print(f"  {red('✗')} DNS resolution failed — is dnsmasq running on the server?")
+        print(f"  {red('x')} DNS resolution failed")
 
 
 def _is_reachable(ip: str) -> bool:
@@ -202,12 +334,13 @@ def _is_reachable(ip: str) -> bool:
     return result.returncode == 0
 
 
-def _resolve_domain(domain: str, dns_server: str) -> str | None:
+def _resolve_domain(domain: str) -> str | None:
     result = subprocess.run(
-        ["dig", "+short", "+time=2", domain, f"@{dns_server}"],
+        ["dscacheutil", "-q", "host", "-a", "name", domain],
         capture_output=True,
         text=True,
     )
-    if result.returncode == 0 and result.stdout.strip():
-        return result.stdout.strip().split("\n")[0]
+    for line in result.stdout.splitlines():
+        if line.startswith("ip_address:"):
+            return line.split(":")[1].strip()
     return None
