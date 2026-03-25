@@ -54,6 +54,7 @@ TARGET_COMPONENTS: dict[str, dict[str, str]] = {
         "dashboard": "dashboard",
     },
     "home": {
+        "lan": "lan",
         "tunnel": "tunnel",
         "radicale": "radicale",
         "dwayne": "dwayne",

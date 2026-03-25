@@ -11,6 +11,7 @@
     - macbook-console
     - common
     - security
+    - { role: lan-access, tags: ['lan'] }
     - { role: xray-bridge, tags: ['tunnel'] }
     - { role: radicale, tags: ['radicale'] }
     - { role: dwayne, tags: ['dwayne'] }

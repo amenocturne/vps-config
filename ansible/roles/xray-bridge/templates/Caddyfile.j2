@@ -1,6 +1,13 @@
-# Local reverse proxy for home server apps
-# Routes by Host header from the VPS tunnel
+# LAN direct access — same domains, HTTPS with internal CA
+# Clients trust the CA via: vps local setup
+{% for app in home_apps %}
+{{ app.subdomain }}.{{ home_domain }} {
+    tls internal
+    reverse_proxy 127.0.0.1:{{ app.port }}
+}
+{% endfor %}
 
+# Tunnel traffic — routes by Host header from VPS
 :{{ xray_bridge_local_caddy_port }} {
 {% for app in home_apps %}
     @{{ app.name }} host {{ app.subdomain }}.{{ home_domain }}

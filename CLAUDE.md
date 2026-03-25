@@ -20,7 +20,7 @@ Domain: `amenocturne.space` (panel at `panel.amenocturne.space`, nodes at `*.rut
 ### Deploy Targets
 
 - `vps` -- site.yml: common, security, docker, authelia, projects, personal-website, wishlist, coturn, briefing, xray-portal, caddy, monitoring
-- `home` -- home_server.yml: common, security, xray-bridge, radicale, dwayne, jellyfin, navidrome, seafile
+- `home` -- home_server.yml: common, security, lan-access, xray-bridge, radicale, dwayne, jellyfin, navidrome, webdav, send, minecraft
 - `remnawave` -- remnawave.yml: common, security, docker, remnawave, remnawave-subscription-page, remnawave-telegram-bot
 - `nodes` -- node.yml: common, security, docker, remnawave-node
 - Deploy single component: `vps deploy vps caddy`, `vps deploy home jellyfin`
@@ -48,6 +48,10 @@ vps deploy nodes                 # deploy all VPN nodes
 vps deploy node-2                # deploy specific node
 vps deploy <target> <comp> --dry-run  # check mode
 
+vps local setup                  # configure macOS for LAN access (split DNS + CA trust)
+vps local status                 # check LAN access configuration
+vps local remove                 # remove LAN access configuration
+
 vps doctor                       # all checks (--secrets, --syntax, --connectivity, --services)
 vps server logs <service>        # docker logs (--on remnawave for other targets)
 vps server restart <service>     # docker restart
@@ -71,7 +75,7 @@ vps remnawave template push      # upload Mihomo template to panel (--file, --na
 | Target | Components | Notes |
 |--------|-----------|-------|
 | `vps` | caddy, authelia, monitoring, personal-website, wishlist, coturn, briefing, tunnel, projects | Main server roles |
-| `home` | tunnel, radicale, dwayne, jellyfin, navidrome, seafile | Home server (MacBook) roles |
+| `home` | lan, tunnel, radicale, dwayne, jellyfin, navidrome, webdav, send, minecraft | Home server (MacBook) roles |
 | `remnawave` | panel, subscription, telegram-bot | Panel server roles |
 | `nodes` | — | Use `node-N` to limit to one node |
 

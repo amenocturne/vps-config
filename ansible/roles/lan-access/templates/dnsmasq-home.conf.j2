@@ -1,0 +1,14 @@
+# Split DNS for home services
+# LAN clients get local IP, bypassing VPS tunnel
+address=/{{ home_domain }}/{{ lan_local_ip }}
+
+# Forward everything else upstream
+server=1.1.1.1
+server=8.8.8.8
+
+# Only listen on LAN interface (avoids conflict with systemd-resolved on 127.0.0.53)
+listen-address={{ lan_local_ip }}
+bind-interfaces
+
+# Don't read /etc/resolv.conf
+no-resolv

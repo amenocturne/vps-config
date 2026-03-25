@@ -176,6 +176,14 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Template name in panel (default: 'RU Split')",
     )
 
+    # local
+    local_p = sub.add_parser("local", help="LAN access to home server (macOS)")
+    local_p.set_defaults(_parser=local_p)
+    local_sub = local_p.add_subparsers(dest="local_command", metavar="<command>")
+    local_sub.add_parser("setup", help="Configure split DNS + trust Caddy CA")
+    local_sub.add_parser("status", help="Check LAN access configuration")
+    local_sub.add_parser("remove", help="Remove LAN access configuration")
+
     # certs
     certs_p = sub.add_parser("certs", help="SSL certificate management")
     certs_p.set_defaults(_parser=certs_p)
@@ -214,6 +222,19 @@ def _dispatch_server(args: argparse.Namespace) -> int:
         "ssh": cmd_server_ssh,
         "test": cmd_server_test,
     }[args.server_command](args)
+
+
+def _dispatch_local(args: argparse.Namespace) -> int:
+    from vps_cli.cli.local import cmd_local_remove, cmd_local_setup, cmd_local_status
+
+    if not args.local_command:
+        args._parser.print_help()
+        return 0
+    return {
+        "setup": cmd_local_setup,
+        "status": cmd_local_status,
+        "remove": cmd_local_remove,
+    }[args.local_command](args)
 
 
 def _dispatch_certs(args: argparse.Namespace) -> int:
@@ -277,6 +298,7 @@ def main() -> None:
             "vps_cli.cli.doctor", fromlist=["cmd_doctor"]
         ).cmd_doctor(a),
         "server": _dispatch_server,
+        "local": _dispatch_local,
         "remnawave": _dispatch_remnawave,
         "certs": _dispatch_certs,
         "secrets": lambda a: __import__(

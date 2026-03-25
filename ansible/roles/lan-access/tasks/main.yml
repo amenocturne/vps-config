@@ -1,0 +1,79 @@
+---
+# mDNS — advertise as <hostname>.local on LAN
+# macOS resolves .local natively via Bonjour
+
+- name: Install avahi-daemon
+  apt:
+    name: avahi-daemon
+    state: present
+
+- name: Set avahi hostname
+  lineinfile:
+    path: /etc/avahi/avahi-daemon.conf
+    regexp: '^#?host-name='
+    line: "host-name={{ lan_hostname }}"
+    insertafter: '^\[server\]'
+  notify: restart avahi
+
+- name: Enable and start avahi-daemon
+  systemd:
+    name: avahi-daemon
+    state: started
+    enabled: yes
+
+# Split DNS — resolve *.home_domain to local IP
+# LAN clients query this server for home domains, get local IP.
+# When away, the resolver falls back to public DNS → VPS tunnel.
+
+- name: Install dnsmasq
+  apt:
+    name: dnsmasq
+    state: present
+
+- name: Configure dnsmasq for split DNS
+  template:
+    src: dnsmasq-home.conf.j2
+    dest: /etc/dnsmasq.d/home-services.conf
+    mode: '0644'
+  notify: restart dnsmasq
+
+- name: Enable and start dnsmasq
+  systemd:
+    name: dnsmasq
+    state: started
+    enabled: yes
+
+# Firewall
+
+- name: Allow mDNS through firewall
+  ufw:
+    rule: allow
+    port: "5353"
+    proto: udp
+    comment: "mDNS (LAN discovery)"
+
+- name: Allow DNS from LAN (UDP)
+  ufw:
+    rule: allow
+    port: "53"
+    proto: udp
+    src: "{{ lan_subnet }}"
+    comment: "DNS (split DNS for home services)"
+
+- name: Allow DNS from LAN (TCP)
+  ufw:
+    rule: allow
+    port: "53"
+    proto: tcp
+    src: "{{ lan_subnet }}"
+    comment: "DNS (split DNS for home services)"
+
+- name: Allow home app ports from LAN
+  ufw:
+    rule: allow
+    port: "{{ item.port | string }}"
+    proto: tcp
+    src: "{{ lan_subnet }}"
+    comment: "LAN - {{ item.name }}"
+  loop: "{{ home_apps }}"
+  when: home_apps is defined

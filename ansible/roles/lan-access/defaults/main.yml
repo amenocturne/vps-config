@@ -1,0 +1,4 @@
+---
+lan_hostname: "{{ server_hostname | default('home-server') }}"
+lan_subnet: "192.168.0.0/24"
+lan_local_ip: "{{ ansible_host }}"
