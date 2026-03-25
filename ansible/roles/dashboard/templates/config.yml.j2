@@ -79,6 +79,11 @@ services:
   - name: "Projects"
     icon: "fas fa-rocket"
     items:
+      - name: "Personal Website"
+        subtitle: "Portfolio"
+        url: "https://{{ domain_name }}"
+        icon: "fas fa-user"
+        tag: "vps"
       - name: "Infinite Echoes"
         subtitle: "Audio creation game"
         url: "https://projects.{{ domain_name }}/infinite-echoes/"
@@ -88,11 +93,6 @@ services:
         subtitle: "Casino wheel app"
         url: "https://projects.{{ domain_name }}/rouletto/"
         icon: "fas fa-dice"
-        tag: "vps"
-      - name: "Personal Website"
-        subtitle: "Portfolio"
-        url: "https://{{ domain_name }}"
-        icon: "fas fa-user"
         tag: "vps"
 
   - name: "Monitoring"
