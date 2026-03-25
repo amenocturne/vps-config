@@ -29,7 +29,7 @@ def _load_home_config() -> tuple[str, str, list[dict]]:
 
     home_ip = inv["all"]["children"]["home_server"]["hosts"]["home_server"]["ansible_host"]
     home_domain = inv["all"]["vars"]["home_domain"]
-    home_apps = inv["all"]["children"]["home_server"]["vars"]["home_apps"]
+    home_apps = inv["all"]["vars"]["home_apps"]
     return home_ip, home_domain, home_apps
 
 
@@ -168,7 +168,7 @@ def _install_toggle_script(home_ip: str, entries: list[str]) -> None:
         # Wait briefly for network to settle after a change
         sleep 2
 
-        if ping -c 1 -W 1 "$HOME_IP" > /dev/null 2>&1; then
+        if nc -z -w 1 "$HOME_IP" 22 > /dev/null 2>&1; then
             add_entries
         else
             remove_entries
@@ -328,7 +328,7 @@ def _verify_setup(home_ip: str, home_domain: str) -> None:
 
 def _is_reachable(ip: str) -> bool:
     result = subprocess.run(
-        ["ping", "-c", "1", "-W", "1", ip],
+        ["nc", "-z", "-w", "1", ip, "22"],
         capture_output=True,
     )
     return result.returncode == 0
