@@ -57,15 +57,6 @@ services:
         icon: "fas fa-paper-plane"
         tag: "home server"
 
-  - name: "Communication"
-    icon: "fas fa-comments"
-    items:
-      - name: "Briefing"
-        subtitle: "P2P video calls"
-        url: "https://call.{{ domain_name }}"
-        icon: "fas fa-video"
-        tag: "vps"
-
   - name: "Productivity"
     icon: "fas fa-tasks"
     items:
@@ -79,6 +70,11 @@ services:
         url: "https://cal.{{ home_domain }}"
         icon: "fas fa-calendar"
         tag: "home server"
+      - name: "Briefing"
+        subtitle: "P2P video calls"
+        url: "https://call.{{ domain_name }}"
+        icon: "fas fa-video"
+        tag: "vps"
 
   - name: "Projects"
     icon: "fas fa-rocket"
@@ -93,10 +89,6 @@ services:
         url: "https://projects.{{ domain_name }}/rouletto/"
         icon: "fas fa-dice"
         tag: "vps"
-
-  - name: "Sites"
-    icon: "fas fa-globe"
-    items:
       - name: "Personal Website"
         subtitle: "Portfolio"
         url: "https://{{ domain_name }}"
