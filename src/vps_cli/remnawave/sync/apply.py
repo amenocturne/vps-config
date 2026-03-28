@@ -21,8 +21,9 @@ async def _recreate_config_profile(
     client: Any,
     diff: ResourceDiff,
     desired_state: PanelState,
-) -> tuple[dict[str, str], str | None]:
+) -> tuple[dict[str, str], dict[str, str], str | None]:
     uuid_remap: dict[str, str] = {}
+    tag_to_new_uuid: dict[str, str] = {}
     desired_by_uuid = {p.uuid: _to_dict(p) for p in desired_state.config_profiles}
 
     try:
@@ -36,13 +37,14 @@ async def _recreate_config_profile(
                 uuid_remap[diff.uuid] = result["uuid"]
             new_inbounds = result.get("inbounds", [])
             for new_inb in new_inbounds:
+                tag_to_new_uuid[new_inb["tag"]] = new_inb["uuid"]
                 for old_inb in d.get("inbounds", []):
                     if old_inb.get("tag") == new_inb["tag"]:
                         if old_inb.get("uuid"):
                             uuid_remap[old_inb["uuid"]] = new_inb["uuid"]
                         break
             print(green(f'  [ok] Created config profile "{diff.name}"'))
-            return uuid_remap, None
+            return uuid_remap, tag_to_new_uuid, None
 
         elif diff.action == "update":
             d = desired_by_uuid.get(diff.uuid, {})
@@ -59,6 +61,7 @@ async def _recreate_config_profile(
 
             new_inbounds = result.get("inbounds", [])
             for new_inb in new_inbounds:
+                tag_to_new_uuid[new_inb["tag"]] = new_inb["uuid"]
                 for old_inb in old_inbounds:
                     if old_inb.get("tag") == new_inb["tag"]:
                         if old_inb.get("uuid"):
@@ -66,19 +69,19 @@ async def _recreate_config_profile(
                         break
 
             print(green(f'  [ok] Updated config profile "{diff.name}" (delete + recreate)'))
-            return uuid_remap, None
+            return uuid_remap, tag_to_new_uuid, None
 
         elif diff.action == "delete":
             await api_delete(client, f"/config-profiles/{diff.uuid}")
             print(green(f'  [ok] Deleted config profile "{diff.name}"'))
-            return uuid_remap, None
+            return uuid_remap, tag_to_new_uuid, None
 
     except Exception as exc:
         msg = f'Config profile "{diff.name}": {exc}'
         print(red(f"  [err] {msg}"))
-        return uuid_remap, msg
+        return uuid_remap, tag_to_new_uuid, msg
 
-    return uuid_remap, None
+    return uuid_remap, tag_to_new_uuid, None
 
 
 async def _fix_squads_after_recreate(
@@ -385,6 +388,28 @@ def _remap_desired_state(desired_state: PanelState, uuid_remap: dict[str, str]) 
     )
 
 
+def _patch_new_inbound_uuids(
+    desired_state: PanelState,
+    profile_uuid: str,
+    tag_to_new_uuid: dict[str, str],
+) -> PanelState:
+    """Inject server-assigned UUIDs for newly created inbounds into desired state."""
+    new_profiles = []
+    for p in desired_state.config_profiles:
+        d = _to_dict(p)
+        if d.get("uuid") == profile_uuid:
+            for inb in d.get("inbounds", []):
+                if not inb.get("uuid") and inb.get("tag") in tag_to_new_uuid:
+                    inb["uuid"] = tag_to_new_uuid[inb["tag"]]
+        new_profiles.append(ConfigProfileState(**d))
+    return PanelState(
+        config_profiles=new_profiles,
+        nodes=desired_state.nodes,
+        hosts=desired_state.hosts,
+        users=desired_state.users,
+    )
+
+
 def _find_affected_nodes(profile_uuid: str, desired_state: PanelState) -> list[str]:
     return [
         _to_dict(n)["uuid"]
@@ -437,7 +462,7 @@ async def apply_plan(
             diff.uuid, old_inbound_uuids, desired_state,
         )
 
-        uuid_remap, error = await _recreate_config_profile(
+        uuid_remap, tag_to_new_uuid, error = await _recreate_config_profile(
             client, diff, desired_state,
         )
         if error:
@@ -451,6 +476,11 @@ async def apply_plan(
             desired_state = _remap_desired_state(desired_state, uuid_remap)
 
         new_profile_uuid = uuid_remap.get(diff.uuid, diff.uuid)
+
+        if tag_to_new_uuid:
+            desired_state = _patch_new_inbound_uuids(
+                desired_state, new_profile_uuid, tag_to_new_uuid,
+            )
         new_inbound_uuids = []
         for p in desired_state.config_profiles:
             pd = _to_dict(p)
