@@ -15,6 +15,10 @@ reality_dest: "search.brave.com:443"  # ASN-neutral destination
 reality_server_names:
   - "search.brave.com"
 
+# Hysteria 2 (UDP, QUIC-based)
+remnawave_node_hysteria2_port: 443
+remnawave_node_enable_hysteria2: false
+
 # SECRET_KEY (must be obtained from Remnawave Panel)
 # This MUST be set in inventory secrets file (ansible/inventories/.secrets.yml)
 # NEVER commit actual secret keys to git!

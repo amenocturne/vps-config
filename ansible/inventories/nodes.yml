@@ -58,6 +58,7 @@ all:
         remnawave_node_ws_port: 8443            # VLESS + WebSocket + TLS (Cloudflare CDN)
         remnawave_node_shadowsocks_port: 8388   # Shadowsocks (optional)
         remnawave_node_enable_shadowsocks: true
+        remnawave_node_enable_hysteria2: true
 
         # Node Directories
         remnawave_node_directory: "/opt/remnanode"

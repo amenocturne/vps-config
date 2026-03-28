@@ -186,6 +186,16 @@
     comment: "VLESS WebSocket via Cloudflare CDN"
   when: ansible_os_family == "Debian"
 
+- name: Configure firewall - Allow Hysteria 2 port (UDP)
+  ufw:
+    rule: allow
+    port: "{{ remnawave_node_hysteria2_port }}"
+    proto: udp
+    comment: "Hysteria 2 (QUIC)"
+  when:
+    - ansible_os_family == "Debian"
+    - remnawave_node_enable_hysteria2 | default(false)
+
 - name: Install logrotate if not present
   apt:
     name: logrotate
@@ -245,6 +255,11 @@
         - Port: {{ remnawave_node_ws_port }}
         - Via Cloudflare CDN
 
+      {% if remnawave_node_enable_hysteria2 | default(false) %}
+      Hysteria 2 (QUIC):
+        - Port: {{ remnawave_node_hysteria2_port }} (UDP)
+
+      {% endif %}
       {% if remnawave_node_enable_shadowsocks | default(false) %}
       Shadowsocks 2022:
         - Port: {{ remnawave_node_shadowsocks_port }} (TCP+UDP)
