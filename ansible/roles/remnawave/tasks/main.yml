@@ -32,8 +32,8 @@
 - name: Modify docker-compose to bind to all interfaces (for remote reverse proxy)
   replace:
     path: "{{ remnawave_directory }}/docker-compose.yml"
-    regexp: "127\\.0\\.0\\.1:3000:3000"
-    replace: "0.0.0.0:3000:3000"
+    regexp: "127\\.0\\.0\\.1:3000:\\$\\{APP_PORT:-3000\\}"
+    replace: "0.0.0.0:3000:${APP_PORT:-3000}"
 
 - name: Create certificates directory for panel
   file:
@@ -118,13 +118,10 @@
       Then copy to {{ remnawave_directory }}/certs/remnawave-nodes-ca.pem
 
 - name: Add certificate volume mount to remnawave service
-  blockinfile:
+  lineinfile:
     path: "{{ remnawave_directory }}/docker-compose.yml"
-    marker: "    # {mark} ANSIBLE MANAGED - Certificate mount for node TLS verification"
-    insertafter: "    container_name: remnawave"
-    block: |2
-          volumes:
-            - {{ remnawave_directory }}/certs/remnawave-nodes-ca.pem:/etc/ssl/certs/remnawave-nodes-ca.pem:ro
+    insertafter: "      - valkey-socket:/var/run/valkey"
+    line: "      - {{ remnawave_directory }}/certs/remnawave-nodes-ca.pem:/etc/ssl/certs/remnawave-nodes-ca.pem:ro"
 
 - name: Display certificate configuration status
   debug:
