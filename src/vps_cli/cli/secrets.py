@@ -1,18 +1,23 @@
 from __future__ import annotations
 
 import argparse
-import sys
 
 
-def cmd_secrets(args: argparse.Namespace) -> int:
-    action = args.action or "check"
-    if action == "check":
-        from vps_cli.secrets import check_secrets
+def cmd_secrets_check(_args: argparse.Namespace) -> int:
+    from vps_cli.secrets import check_secrets
 
-        return check_secrets()
-    elif action == "init":
-        from vps_cli.secrets import init_secrets
+    return check_secrets()
 
-        return init_secrets()
-    print(f"Error: unknown action '{action}'", file=sys.stderr)
-    return 1
+
+def cmd_secrets_init(_args: argparse.Namespace) -> int:
+    from vps_cli.secrets import init_secrets
+
+    return init_secrets()
+
+
+def cmd_secrets_hash_password(args: argparse.Namespace) -> int:
+    from argon2 import PasswordHasher
+
+    ph = PasswordHasher(time_cost=3, memory_cost=65536, parallelism=4)
+    print(ph.hash(args.password))
+    return 0

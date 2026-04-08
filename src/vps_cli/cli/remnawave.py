@@ -29,6 +29,7 @@ def cmd_remnawave_add_node(args: argparse.Namespace) -> int:
         node_id=args.node_id,
         vless_port=args.vless_port,
         reality_port=args.reality_port,
+        ssh_key=args.ssh_key,
     )
     return 0
 

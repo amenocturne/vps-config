@@ -98,7 +98,9 @@ access_control:
     # Remnawave: protect main UI with Authelia
     - domain: "panel.{{ domain_name }}"
       policy: one_factor
-      subject: "group:admins"
+      subject:
+        - "group:admins"
+        - "group:panel"
 
 session:
   name: authelia_session

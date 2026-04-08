@@ -26,6 +26,14 @@ all:
           outline_enabled: true
           outline_api_port: 61779
           outline_ss_port: 14685
+          outline_watchtower_enabled: false
+        node-3:
+          ansible_host: 62.133.60.116
+          node_name: "Germany"
+          vless_ws_domain: "de1.rutube.dad"
+          ansible_ssh_private_key_file: ~/.ssh/node-de1
+          ansible_python_interpreter: /usr/bin/python3.10
+
 
       vars:
         # SSH Configuration (same for all nodes)

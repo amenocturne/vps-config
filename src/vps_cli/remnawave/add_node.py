@@ -361,6 +361,7 @@ def _update_inventory(
     domain: str,
     vless_port: int,
     reality_port: int,
+    ssh_key: str | None = None,
 ) -> None:
     if inventory_path.exists():
         content = inventory_path.read_text()
@@ -379,6 +380,8 @@ def _update_inventory(
         f'          vless_ws_domain: "{domain}"',
     ]
 
+    if ssh_key:
+        lines.append(f"          ansible_ssh_private_key_file: {ssh_key}")
     if vless_port != DEFAULT_VLESS_PORT:
         lines.append(f"          remnawave_node_vless_port: {vless_port}")
     if reality_port != DEFAULT_REALITY_PORT:
@@ -442,6 +445,7 @@ async def _add_node(
     vless_port: int = DEFAULT_VLESS_PORT,
     reality_port: int = DEFAULT_REALITY_PORT,
     ss_port: int = DEFAULT_SS_PORT,
+    ssh_key: str | None = None,
 ) -> None:
     root = find_project_root()
     config = load_config()
@@ -516,7 +520,7 @@ async def _add_node(
     _step(6, "Inventory")
     _update_inventory(
         inventory_path, node_id, ip, name, domain,
-        vless_port, reality_port,
+        vless_port, reality_port, ssh_key=ssh_key,
     )
 
     tags_note = ""
@@ -536,8 +540,10 @@ def main(
     node_id: str | None = None,
     vless_port: int = DEFAULT_VLESS_PORT,
     reality_port: int = DEFAULT_REALITY_PORT,
+    ssh_key: str | None = None,
 ) -> None:
     asyncio.run(_add_node(
         ip=ip, name=name, country=country, domain=domain,
         node_id=node_id, vless_port=vless_port, reality_port=reality_port,
+        ssh_key=ssh_key,
     ))

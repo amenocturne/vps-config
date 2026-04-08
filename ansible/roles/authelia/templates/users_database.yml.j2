@@ -14,3 +14,11 @@ users:
     groups:
       - shared
 {% endif %}
+{% if authelia_eladiv_password_hash is defined and authelia_eladiv_password_hash %}
+  eladiv:
+    displayname: "Eladiv"
+    password: "{{ authelia_eladiv_password_hash }}"
+    email: eladiv@{{ domain_name }}
+    groups:
+      - panel
+{% endif %}

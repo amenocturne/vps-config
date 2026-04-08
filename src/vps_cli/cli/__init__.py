@@ -127,6 +127,9 @@ def _build_parser() -> argparse.ArgumentParser:
     rw_add.add_argument(
         "--reality-port", type=int, default=8443, help="Reality port (default: 8443)"
     )
+    rw_add.add_argument(
+        "--ssh-key", default=None, help="SSH private key path for this node (overrides group default)"
+    )
 
     rw_snapshot = rw_sub.add_parser(
         "snapshot", help="Save configs locally for offline use"
@@ -194,13 +197,12 @@ def _build_parser() -> argparse.ArgumentParser:
 
     # secrets
     secrets_p = sub.add_parser("secrets", help="Secrets management")
-    secrets_p.add_argument(
-        "action",
-        nargs="?",
-        choices=["check", "init"],
-        default="check",
-        help="Action (default: check)",
-    )
+    secrets_p.set_defaults(_parser=secrets_p)
+    secrets_sub = secrets_p.add_subparsers(dest="secrets_command", metavar="<command>")
+    secrets_sub.add_parser("check", help="Verify secrets.yml")
+    secrets_sub.add_parser("init", help="Interactive setup")
+    s_hash = secrets_sub.add_parser("hash-password", help="Generate Argon2 hash for Authelia")
+    s_hash.add_argument("password", help="Password to hash")
 
     return parser
 
@@ -276,6 +278,23 @@ def _dispatch_remnawave(args: argparse.Namespace) -> int:
     }[args.remnawave_command](args)
 
 
+def _dispatch_secrets(args: argparse.Namespace) -> int:
+    from vps_cli.cli.secrets import (
+        cmd_secrets_check,
+        cmd_secrets_hash_password,
+        cmd_secrets_init,
+    )
+
+    if not args.secrets_command:
+        # Default to check for backwards compat
+        return cmd_secrets_check(args)
+    return {
+        "check": cmd_secrets_check,
+        "init": cmd_secrets_init,
+        "hash-password": cmd_secrets_hash_password,
+    }[args.secrets_command](args)
+
+
 def main() -> None:
     parser = _build_parser()
     args = parser.parse_args()
@@ -301,9 +320,7 @@ def main() -> None:
         "local": _dispatch_local,
         "remnawave": _dispatch_remnawave,
         "certs": _dispatch_certs,
-        "secrets": lambda a: __import__(
-            "vps_cli.cli.secrets", fromlist=["cmd_secrets"]
-        ).cmd_secrets(a),
+        "secrets": _dispatch_secrets,
     }
 
     handler = handlers.get(args.command)
