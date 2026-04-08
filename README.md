@@ -106,7 +106,7 @@ A launchd daemon on the Mac watches for network changes. When it detects the hom
 
 ```
 At home:
-  /etc/hosts → 192.168.0.104 (local)
+  /etc/hosts → 192.168.0.106 (local)
   HTTPS → home Caddy (port 443, internal CA) → service
   Speed: LAN
 
