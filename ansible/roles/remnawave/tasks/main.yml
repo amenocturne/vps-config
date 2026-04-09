@@ -35,6 +35,12 @@
     regexp: "127\\.0\\.0\\.1:3000:\\$\\{APP_PORT:-3000\\}"
     replace: "0.0.0.0:3000:${APP_PORT:-3000}"
 
+- name: Set memory limit on remnawave panel container
+  lineinfile:
+    path: "{{ remnawave_directory }}/docker-compose.yml"
+    insertafter: "    container_name: remnawave$"
+    line: "    mem_limit: {{ remnawave_mem_limit | default('750m') }}"
+
 - name: Create certificates directory for panel
   file:
     path: "{{ remnawave_directory }}/certs"
@@ -254,6 +260,36 @@
     proto: udp
   when: ansible_os_family == "Debian"
 
+
+# Swap — prevent OOM on low-memory servers
+- name: Check if swap file exists
+  stat:
+    path: /swapfile
+  register: swap_file
+
+- name: Create and enable 1GB swap file
+  shell: |
+    fallocate -l 1G /swapfile
+    chmod 600 /swapfile
+    mkswap /swapfile
+    swapon /swapfile
+  args:
+    creates: /swapfile
+
+- name: Add swap to fstab
+  lineinfile:
+    path: /etc/fstab
+    line: "/swapfile none swap sw 0 0"
+    state: present
+
+# Weekly restart to contain slow memory leak in Node.js processes
+- name: Schedule weekly remnawave panel restart
+  cron:
+    name: "weekly remnawave restart"
+    weekday: "0"
+    hour: "5"
+    minute: "0"
+    job: "docker restart remnawave >> /var/log/remnawave-restart.log 2>&1"
 
 # Create default inbound configuration
 - name: Create default inbound configuration
