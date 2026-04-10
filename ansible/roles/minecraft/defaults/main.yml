@@ -18,4 +18,4 @@ minecraft_online_mode: "false"
 minecraft_view_distance: 10
 minecraft_motd: "Welcome to the server"
 minecraft_panel_port: 9001
-minecraft_panel_src: "{{ playbook_dir }}/../../../personal/minecraft-panel"
+minecraft_panel_src: "{{ playbook_dir }}/../../../minecraft-panel"
