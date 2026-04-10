@@ -11,11 +11,16 @@
     - "{{ minecraft_dir }}/backups"
     - "{{ minecraft_dir }}/worlds"
 
-- name: Deploy world manager script
-  template:
-    src: mc-manager.py.j2
-    dest: "{{ minecraft_dir }}/mc-manager.py"
-    mode: '0644'
+- name: Sync minecraft panel source
+  synchronize:
+    src: "{{ minecraft_panel_src }}/"
+    dest: "{{ minecraft_dir }}/panel/"
+    delete: true
+    rsync_opts:
+      - "--exclude=node_modules"
+      - "--exclude=dist"
+      - "--exclude=tmp"
+      - "--exclude=.git"
   notify: restart minecraft
 
 - name: Deploy minecraft docker-compose

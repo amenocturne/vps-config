@@ -17,7 +17,7 @@ PROMETHEUS_URL: str = os.environ.get("PROMETHEUS_URL", "http://168.100.11.130:90
 MINECRAFT_RCON_HOST: str = os.environ.get("MINECRAFT_RCON_HOST", "168.100.11.130")
 MINECRAFT_RCON_PORT: int = int(os.environ.get("MINECRAFT_RCON_PORT", "25575"))
 MINECRAFT_RCON_PASSWORD: str = os.environ.get("MINECRAFT_RCON_PASSWORD", "")
-MINECRAFT_MANAGER_PORT: int = int(os.environ.get("MINECRAFT_MANAGER_PORT", "8585"))
+MINECRAFT_MANAGER_PORT: int = int(os.environ.get("MINECRAFT_MANAGER_PORT", "9001"))
 
 # Mirrors remnawave.enums.ClientType — update when Remnawave adds new types
 # "raw" is a special type: fetches default sub and base64-decodes to vless:// links

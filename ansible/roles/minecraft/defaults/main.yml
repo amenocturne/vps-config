@@ -4,7 +4,9 @@ minecraft_image: "itzg/minecraft-server:java21"
 minecraft_monitor_image: "itzg/mc-monitor:latest"
 minecraft_version: "LATEST"
 minecraft_type: "PAPER"
-minecraft_memory: "4G"
+minecraft_init_memory: "1G"
+minecraft_max_memory: "4G"
+minecraft_jvm_xx_opts: "-XX:+UseZGC -XX:+ZUncommit -XX:ZUncommitDelay=120"
 minecraft_port: 25565
 minecraft_rcon_port: 25575
 minecraft_monitor_port: 9225
@@ -15,4 +17,5 @@ minecraft_pvp: "true"
 minecraft_online_mode: "false"
 minecraft_view_distance: 10
 minecraft_motd: "Welcome to the server"
-minecraft_manager_port: 8585
+minecraft_panel_port: 9001
+minecraft_panel_src: "{{ playbook_dir }}/../../../personal/minecraft-panel"

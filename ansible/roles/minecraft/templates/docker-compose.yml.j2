@@ -11,7 +11,9 @@ services:
       EULA: "TRUE"
       TYPE: "{{ minecraft_type }}"
       VERSION: "{{ minecraft_version }}"
-      MEMORY: "{{ minecraft_memory }}"
+      INIT_MEMORY: "{{ minecraft_init_memory }}"
+      MAX_MEMORY: "{{ minecraft_max_memory }}"
+      JVM_XX_OPTS: "{{ minecraft_jvm_xx_opts }}"
       ONLINE_MODE: "{{ minecraft_online_mode }}"
       MAX_PLAYERS: "{{ minecraft_max_players }}"
       DIFFICULTY: "{{ minecraft_difficulty }}"
@@ -46,17 +48,15 @@ services:
       EXPORT_SERVERS: "localhost:25565"
       EXPORT_PORT: "{{ minecraft_monitor_port }}"
 
-  mc-manager:
-    image: python:3.12-slim
-    container_name: mc-manager
+  mc-panel:
+    build: {{ minecraft_dir }}/panel
+    container_name: mc-panel
     restart: unless-stopped
     network_mode: host
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - {{ minecraft_dir }}/data:/data
       - {{ minecraft_dir }}/worlds:/worlds
-      - {{ minecraft_dir }}/mc-manager.py:/app/mc-manager.py:ro
-    command: python /app/mc-manager.py
     environment:
       RCON_PASSWORD: "{{ minecraft_rcon_password }}"
-      MANAGER_PORT: "{{ minecraft_manager_port }}"
+      MANAGER_PORT: "{{ minecraft_panel_port }}"
