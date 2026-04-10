@@ -3,3 +3,11 @@
   community.docker.docker_compose_v2:
     project_src: "{{ minecraft_dir }}"
     state: restarted
+
+- name: rebuild mc-panel
+  community.docker.docker_compose_v2:
+    project_src: "{{ minecraft_dir }}"
+    services:
+      - mc-panel
+    state: restarted
+    build: always

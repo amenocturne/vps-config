@@ -21,7 +21,7 @@
       - "--exclude=dist"
       - "--exclude=tmp"
       - "--exclude=.git"
-  notify: restart minecraft
+  notify: rebuild mc-panel
 
 - name: Deploy minecraft docker-compose
   template:
