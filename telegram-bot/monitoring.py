@@ -8,10 +8,10 @@ logger = logging.getLogger(__name__)
 SERVERS = ["vps", "remnawave", "node-2", "home"]
 
 SERVER_EMOJI = {
-    "vps": "\U0001f5a5",       # desktop computer
+    "vps": "\U0001f5a5",  # desktop computer
     "remnawave": "\U0001f310",  # globe with meridians
-    "node-2": "\U0001f517",    # link
-    "home": "\U0001f3e0",      # house
+    "node-2": "\U0001f517",  # link
+    "home": "\U0001f3e0",  # house
 }
 
 SERVER_DISPLAY = {
@@ -24,6 +24,12 @@ SERVER_DISPLAY = {
 _ALERT_CPU_THRESHOLD = 90.0
 _ALERT_MEMORY_THRESHOLD = 85.0
 _ALERT_DISK_THRESHOLD = 85.0
+
+# Per-server memory overrides. node-2 is a 1 GiB VPS with baseline ~80%,
+# so 85% fires on normal fluctuations — use 90% there.
+_MEMORY_THRESHOLD_OVERRIDES: dict[str, float] = {
+    "node-2": 90.0,
+}
 
 _client: httpx.AsyncClient | None = None
 
@@ -133,12 +139,17 @@ async def check_alerts() -> list[str]:
         cpu_q = f'100 - (avg(irate(node_cpu_seconds_total{{mode="idle",server="{server}"}}[5m])) * 100)'
         cpu = await query_value(cpu_q)
         if cpu is not None and cpu > _ALERT_CPU_THRESHOLD:
-            alerts.append(f"{name}: CPU at {cpu:.1f}% (threshold: {_ALERT_CPU_THRESHOLD:.0f}%)")
+            alerts.append(
+                f"{name}: CPU at {cpu:.1f}% (threshold: {_ALERT_CPU_THRESHOLD:.0f}%)"
+            )
 
         mem_q = f'(1 - node_memory_MemAvailable_bytes{{server="{server}"}} / node_memory_MemTotal_bytes{{server="{server}"}}) * 100'
         memory = await query_value(mem_q)
-        if memory is not None and memory > _ALERT_MEMORY_THRESHOLD:
-            alerts.append(f"{name}: Memory at {memory:.1f}% (threshold: {_ALERT_MEMORY_THRESHOLD:.0f}%)")
+        mem_threshold = _MEMORY_THRESHOLD_OVERRIDES.get(server, _ALERT_MEMORY_THRESHOLD)
+        if memory is not None and memory > mem_threshold:
+            alerts.append(
+                f"{name}: Memory at {memory:.1f}% (threshold: {mem_threshold:.0f}%)"
+            )
 
         disk_q = (
             f'100 - (node_filesystem_avail_bytes{{fstype=~"ext4|xfs|btrfs|zfs|exfat|ntfs",'
@@ -152,7 +163,9 @@ async def check_alerts() -> list[str]:
                 val = float(r["value"][1])
                 mount = r["metric"].get("mountpoint", "unknown")
                 if val > _ALERT_DISK_THRESHOLD:
-                    alerts.append(f"{name}: Disk at {val:.1f}% on {mount} (threshold: {_ALERT_DISK_THRESHOLD:.0f}%)")
+                    alerts.append(
+                        f"{name}: Disk at {val:.1f}% on {mount} (threshold: {_ALERT_DISK_THRESHOLD:.0f}%)"
+                    )
             except (KeyError, IndexError, ValueError, TypeError):
                 continue
 
