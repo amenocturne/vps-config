@@ -1,0 +1,5 @@
+---
+- name: restart soft-serve
+  community.docker.docker_compose_v2:
+    project_src: "{{ soft_serve_dir }}"
+    state: restarted

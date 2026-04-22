@@ -1,7 +1,7 @@
 # LAN direct access — same domains, HTTPS with internal CA
 # Clients trust the CA via: vps local setup
 {% for app in home_apps %}
-{{ app.subdomain }}.{{ home_domain }} {
+{{ app.fqdn if app.fqdn is defined else app.subdomain ~ '.' ~ home_domain }} {
     tls internal
     reverse_proxy 127.0.0.1:{{ app.port }}
 }
@@ -10,7 +10,7 @@
 # Tunnel traffic — routes by Host header from VPS
 :{{ xray_bridge_local_caddy_port }} {
 {% for app in home_apps %}
-    @{{ app.name }} host {{ app.subdomain }}.{{ home_domain }}
+    @{{ app.name }} host {{ app.fqdn if app.fqdn is defined else app.subdomain ~ '.' ~ home_domain }}
     handle @{{ app.name }} {
         reverse_proxy 127.0.0.1:{{ app.port }} {
             header_up X-Remote-User {header.Remote-User}

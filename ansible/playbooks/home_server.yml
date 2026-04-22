@@ -20,6 +20,7 @@
     - { role: webdav, tags: ['webdav'] }
     - { role: send, tags: ['send'] }
     - { role: minecraft, tags: ['minecraft'] }
+    - { role: git, tags: ['git'] }
     - role: monitoring-agent
       tags: ['monitoring']
       vars:

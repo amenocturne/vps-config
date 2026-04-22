@@ -31,6 +31,17 @@
       }
     },
     {
+      "tag": "git-ssh",
+      "port": {{ soft_serve_public_ssh_port | default(2223) }},
+      "listen": "0.0.0.0",
+      "protocol": "dokodemo-door",
+      "settings": {
+        "address": "127.0.0.1",
+        "port": {{ soft_serve_ssh_port | default(23231) }},
+        "network": "tcp"
+      }
+    },
+    {
       "tag": "metrics-node-exporter",
       "port": 9101,
       "listen": "127.0.0.1",
@@ -126,7 +137,7 @@
     "rules": [
       {
         "type": "field",
-        "inboundTag": ["external", "ssh-external", "metrics-node-exporter", "metrics-cadvisor", "minecraft", "minecraft-rcon", "minecraft-metrics", "minecraft-manager"],
+        "inboundTag": ["external", "ssh-external", "git-ssh", "metrics-node-exporter", "metrics-cadvisor", "minecraft", "minecraft-rcon", "minecraft-metrics", "minecraft-manager"],
         "outboundTag": "portal"
       },
       {

@@ -213,6 +213,19 @@ SCHEMA = [
         ],
     },
     {
+        "section": "Soft Serve (git)",
+        "keys": [
+            {
+                "name": "soft_serve_admin_keys",
+                "description": "SSH public keys granted admin access to the git server. MUST be Ed25519 or SHA-1 RSA — new RSA keys unsupported by Soft Serve.",
+                "used_by": ["home_server"],
+                "default": None,
+                "generate": "cat ~/.ssh/id_ed25519.pub",
+                "type": "list",
+            },
+        ],
+    },
+    {
         "section": "Radicale",
         "keys": [
             {
@@ -390,7 +403,7 @@ def _render_secrets_yml(existing: dict | None = None) -> tuple[str, list[str]]:
                 lines.append(f"# Generate: {key['generate']}")
 
             name = key["name"]
-            is_dict = key.get("type") == "dict"
+            key_type = key.get("type", "string")
 
             if existing and name in existing:
                 value = existing[name]
@@ -399,13 +412,20 @@ def _render_secrets_yml(existing: dict | None = None) -> tuple[str, list[str]]:
                 if existing is not None:
                     added_keys.append(name)
 
-            if is_dict:
+            if key_type == "dict":
                 lines.append(f"{name}:")
                 if isinstance(value, dict):
                     for k, v in value.items():
                         lines.append(f"  {k}: {_yaml_quote(v)}")
                 else:
                     lines.append(f'  # node-1: "SECRET_KEY_FROM_PANEL"')
+            elif key_type == "list":
+                if isinstance(value, list) and value:
+                    lines.append(f"{name}:")
+                    for item in value:
+                        lines.append(f"  - {_yaml_quote(item)}")
+                else:
+                    lines.append(f"{name}: []")
             else:
                 lines.append(f"{name}: {_yaml_quote(value)}")
 
@@ -432,6 +452,8 @@ def _is_placeholder(value) -> bool:
     if isinstance(value, str) and value.strip() == "":
         return True
     if isinstance(value, dict) and len(value) == 0:
+        return True
+    if isinstance(value, list) and len(value) == 0:
         return True
     return False
 
@@ -571,7 +593,7 @@ def setup_secrets() -> int:
 
         for key in missing:
             name = key["name"]
-            is_dict = key.get("type") == "dict"
+            key_type = key.get("type", "string")
             desc = key["description"]
             gen_hint = key.get("generate")
 
@@ -580,8 +602,8 @@ def setup_secrets() -> int:
             if gen_hint:
                 print(f"    Generate: {gen_hint}")
 
-            if is_dict:
-                print(f"    (dict value -- edit secrets.yml manually for this one)")
+            if key_type in ("dict", "list"):
+                print(f"    ({key_type} value -- edit secrets.yml manually for this one)")
                 continue
 
             value = _prompt("Value (empty to skip)")

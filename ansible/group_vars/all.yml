@@ -41,6 +41,7 @@ grafana_port: 3000
 prometheus_port: 9090
 loki_port: 3100
 
+
 # SSH configuration
 ssh_port: 22
 ssh_permit_root_login: "yes"

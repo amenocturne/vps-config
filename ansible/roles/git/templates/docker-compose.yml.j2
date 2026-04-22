@@ -1,0 +1,19 @@
+services:
+  soft-serve:
+    image: {{ soft_serve_image }}
+    container_name: soft-serve
+    restart: unless-stopped
+    ports:
+      - "{{ soft_serve_ssh_port }}:23231"
+      - "127.0.0.1:{{ soft_serve_http_port }}:23232"
+    environment:
+      SOFT_SERVE_NAME: "{{ soft_serve_name }}"
+      SOFT_SERVE_DATA_PATH: /soft-serve
+      SOFT_SERVE_HTTP_PUBLIC_URL: "{{ soft_serve_public_http_url }}"
+      SOFT_SERVE_SSH_PUBLIC_URL: "{{ soft_serve_public_ssh_url }}"
+      SOFT_SERVE_INITIAL_ADMIN_KEYS: |-
+{% for key in soft_serve_admin_keys %}
+        {{ key }}
+{% endfor %}
+    volumes:
+      - {{ soft_serve_dir }}/data:/soft-serve

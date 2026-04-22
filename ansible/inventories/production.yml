@@ -151,6 +151,10 @@ all:
       - name: minecraft-panel
         subdomain: minecraft
         port: 9001
+      - name: soft-serve
+        fqdn: git.amenocturne.space
+        port: 23232
+        auth_required: false
 
     # Projects configuration
     projects:

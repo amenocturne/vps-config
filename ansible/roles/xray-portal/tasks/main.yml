@@ -38,6 +38,13 @@
     proto: tcp
     comment: "SSH tunnel to home server"
 
+- name: Allow Soft Serve SSH port
+  ufw:
+    rule: allow
+    port: "{{ soft_serve_public_ssh_port }}"
+    proto: tcp
+    comment: "Soft Serve git SSH (tunneled to home)"
+
 - name: Allow Minecraft game port
   ufw:
     rule: allow

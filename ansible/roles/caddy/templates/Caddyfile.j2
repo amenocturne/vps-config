@@ -129,7 +129,7 @@ dash.{{ domain_name }} {
 {% if domain_name != "YOUR_DOMAIN_OR_IP" and home_apps is defined %}
 {% for app in home_apps %}
 {% if not app.custom_caddy | default(false) %}
-{{ app.subdomain }}.{{ home_domain }} {
+{{ app.fqdn if app.fqdn is defined else app.subdomain ~ '.' ~ home_domain }} {
 {% if app.auth_required | default(true) %}
     forward_auth 127.0.0.1:{{ authelia_port }} {
         uri /api/authz/forward-auth

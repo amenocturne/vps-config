@@ -75,7 +75,7 @@ vps remnawave template push      # upload Mihomo template to panel (--file, --na
 | Target | Components | Notes |
 |--------|-----------|-------|
 | `vps` | caddy, authelia, monitoring, personal-website, wishlist, coturn, briefing, tunnel, projects | Main server roles |
-| `home` | lan, tunnel, radicale, dwayne, jellyfin, navidrome, webdav, send, minecraft | Home server (MacBook) roles |
+| `home` | lan, tunnel, radicale, dwayne, jellyfin, navidrome, webdav, send, minecraft, git | Home server (MacBook) roles |
 | `remnawave` | panel, subscription, telegram-bot | Panel server roles |
 | `nodes` | — | Use `node-N` to limit to one node |
 
@@ -108,6 +108,7 @@ scripts/                         # shell scripts (certs, diagnostics, maintenanc
 
 All in `secrets.yml` (gitignored). Schema defined in `src/vps_cli/secrets.py`. Sections:
 
+- **Soft Serve (git)**: `soft_serve_admin_keys` (list of SSH pubkeys — Ed25519 only, no new RSA)
 - **Remnawave Panel**: `remnawave_panel_url`, `remnawave_api_token`, `jwt_auth_secret`, `jwt_api_tokens_secret`, `metrics_pass`, `webhook_secret`, `postgres_password`
 - **VPN Nodes**: `node_secret_keys` (dict: node-1, node-2, ...), `reality_private_key`, `reality_public_key`, `reality_short_id`
 - **Cloudflare**: `cloudflare_api_token`

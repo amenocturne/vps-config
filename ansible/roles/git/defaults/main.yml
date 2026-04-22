@@ -1,0 +1,19 @@
+---
+soft_serve_dir: "/opt/soft-serve"
+soft_serve_image: "charmcli/soft-serve:v0.11.6"
+soft_serve_name: "Amenocturne"
+
+# Ports exposed on the home host (not directly on the internet — reached via xray tunnel)
+soft_serve_ssh_port: 23231
+soft_serve_http_port: 23232
+
+# Public URLs (how clients reach the server from outside)
+soft_serve_public_host: "git.amenocturne.space"
+soft_serve_public_ssh_port: 2223
+soft_serve_public_ssh_url: "ssh://{{ soft_serve_public_host }}:{{ soft_serve_public_ssh_port }}"
+soft_serve_public_http_url: "https://{{ soft_serve_public_host }}"
+
+# Restrictive by default — nobody without an SSH key or access token gets in.
+# Loosen at runtime with: ssh -p 2223 git.amenocturne.space settings anon-access read-only
+soft_serve_anon_access: "no-access"
+soft_serve_allow_keyless: "false"

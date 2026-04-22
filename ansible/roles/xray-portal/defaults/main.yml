@@ -4,3 +4,7 @@ xray_portal_interconnect_port: 9443
 xray_portal_listen_port: 8888
 xray_portal_ssh_port: 2222
 xray_portal_domain: "tunnel.internal"
+
+# Soft Serve tunnel — must match values in git role defaults
+soft_serve_ssh_port: 23231          # listen port inside home host
+soft_serve_public_ssh_port: 2223    # listen port on VPS (tunneled)
