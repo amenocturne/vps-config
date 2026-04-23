@@ -4,10 +4,14 @@
     project_src: "{{ minecraft_dir }}"
     state: restarted
 
-- name: rebuild mc-panel
-  community.docker.docker_compose_v2:
-    project_src: "{{ minecraft_dir }}"
-    services:
-      - mc-panel
-    state: restarted
-    build: always
+- name: rebuild mc-panel image
+  ansible.builtin.command:
+    cmd: docker compose build mc-panel
+    chdir: "{{ minecraft_dir }}"
+  listen: rebuild mc-panel
+
+- name: recreate mc-panel container
+  ansible.builtin.command:
+    cmd: docker compose up -d --force-recreate mc-panel
+    chdir: "{{ minecraft_dir }}"
+  listen: rebuild mc-panel
