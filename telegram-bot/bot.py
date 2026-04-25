@@ -81,7 +81,7 @@ async def _get_config_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         return
 
     if len(users) == 1:
-        sub_link = f"{SUBSCRIPTION_BASE_URL}/sub/{users[0]['shortUuid']}"
+        sub_link = f"{SUBSCRIPTION_BASE_URL}/{users[0]['shortUuid']}"
         await update.message.reply_text(
             f"🔗 <a href=\"{sub_link}\">Ссылка подписки</a>\n\n"
             "Или выбери формат конфига:",
@@ -110,7 +110,7 @@ async def _pick_user_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
 
     short_uuid = query.data.removeprefix("pick_user:")
-    sub_link = f"{SUBSCRIPTION_BASE_URL}/sub/{short_uuid}"
+    sub_link = f"{SUBSCRIPTION_BASE_URL}/{short_uuid}"
     await query.answer()
     await query.message.reply_text(
         f"🔗 Ссылка подписки:\n<code>{sub_link}</code>\n\n"
